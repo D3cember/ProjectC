@@ -1,6 +1,4 @@
-//
-// Created by רן לוגסי on 30/06/2024.
-//
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +14,7 @@ void *handle_malloc(size_t size) {
     return ptr;
 }
 
-struct Macro *newMacro(const char *macroName, const char *macroContent, int line_num){
+struct Macro *newMacro(const char *macroName, const char *macroContent){
     struct Macro *temp =(struct Macro*) handle_malloc(sizeof(struct Macro));
     strncpy(temp->macroName,macroName, sizeof(temp->macroName)-1);
     temp->macroContent= strdup(macroContent);
@@ -24,7 +22,7 @@ struct Macro *newMacro(const char *macroName, const char *macroContent, int line
         print_internal_error(ERROR_CODE_1);
         free(temp);
     }
-    temp->newMacro == NULL;
+    temp->nextMacro = NULL;
     return temp;
 }
 

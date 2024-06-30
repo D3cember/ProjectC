@@ -1,9 +1,8 @@
-//
-// Created by רן לוגסי on 30/06/2024.
-//
-#include <stdio.h>
+
+#include "util.h"
 #include <stdlib.h>
 #include <string.h>
+#include "stdio.h"
 #include "util.h"
 #include "errors.h"
 #include "preproc.h"

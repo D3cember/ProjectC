@@ -1,6 +1,4 @@
-//
-// Created by רן לוגסי on 30/06/2024.
-//
+
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
