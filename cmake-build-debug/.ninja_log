@@ -1,0 +1,8 @@
+# ninja log v6
+0	42	1719763561940458849	build.ninja	4577d40ef4edea40
+1	28	1719763488737255938	CMakeFiles/ProjectC.dir/main.c.o	c980d7f3cdf626c3
+1	27	1719763368788350669	CMakeFiles/ProjectC.dir/preproc.c.o	46658f31f6ff5c68
+2	33	1719763561940458849	build.ninja	4577d40ef4edea40
+0	37	1719763561945543138	CMakeFiles/ProjectC.dir/util.c.o	e96efb3ce3b60987
+0	25	1719763632617045291	CMakeFiles/ProjectC.dir/util.c.o	e96efb3ce3b60987
+1	25	1719763661972146653	CMakeFiles/ProjectC.dir/preproc.c.o	46658f31f6ff5c68
