@@ -1,30 +1,123 @@
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "data_struct.h"
+#include "globaldefine.h"
 #include "errors.h"
+#include "util.h"
+
+
+
+void addNode(LinkedListOfMacro *macroTable , char *line) { // createing node
+    if(macroTable->head==NULL)
+    {
+        macroTable->head=(NodeOnList*) handle_malloc(sizeof(NodeOnList));
+        macroTable->tail=macroTable->head;
+        macroTable->head->name= Macro_name(line);
+        macroTable->head->Macro_content = (LinkedListOfMacro_Content*) handle_malloc(sizeof(LinkedListOfMacro_Content));
+        macroTable->head->Macro_content->head=NULL;
+        macroTable->head->Macro_content->tail=NULL;
+    }
+    else
+    {
+        NodeOnList* newTail=(NodeOnList*) handle_malloc(sizeof(NodeOnList));
+        newTail->name= Macro_name(line);
+        newTail->Macro_content = (LinkedListOfMacro_Content*) handle_malloc(sizeof(LinkedListOfMacro_Content));
+        newTail->Macro_content->head=NULL;
+        newTail->Macro_content->tail=NULL;
+        macroTable->tail->next=newTail;
+        macroTable->tail=newTail;
+    }
+}
+
+
+void add_macro_content(NodeOnList *macro, char *line)
+{
+    NodeOfMacroContentList* newNode = (NodeOfMacroContentList*) handle_malloc(sizeof(NodeOfMacroContentList));
+    strncpy(newNode->line, line, MAX_LINE_LENGTH - 1);
+    newNode->line[MAX_LINE_LENGTH - 1] = '\0'; // Ensure null termination
+    newNode->next = NULL;
+    if (macro->Macro_content->head == NULL){
+        macro->Macro_content->head = newNode;
+        macro->Macro_content->tail=newNode;
+    }
+    else
+    {
+        macro->Macro_content->tail->next = newNode;
+        macro->Macro_content->tail = newNode;
+    }
+}
+
+
+void free_macro_content_list(LinkedListOfMacro_Content *contentList) {
+    NodeOfMacroContentList *current = contentList->head;
+    NodeOfMacroContentList *nextNode;
+
+    while(current != NULL){
+        nextNode = current->next;
+        free(current);
+        current = nextNode;
+    }
+}
+
+void free_linked_list(LinkedListOfMacro *list){
+    NodeOnList *temp = list->head;
+    NodeOnList *nextNode;
+    while(temp != NULL){
+        nextNode = temp->next;
+        free_macro_content_list(temp->Macro_content);
+        free(temp->Macro_content);
+        free(temp->name);
+        free(temp);
+        temp = nextNode;
+    }
+}
 
 void *handle_malloc(size_t size) {
     void *ptr = malloc(size);
     if (ptr == NULL) {
-        fprintf(stderr, "Memory allocation failed\n");
+        print_internal_error(ERROR_CODE_1);
         exit(EXIT_FAILURE);
     }
     return ptr;
 }
+ // -------------- TEST ---------------//
 
-struct Macro *newMacro(const char *macroName, const char *macroContent){
-    struct Macro *temp =(struct Macro*) handle_malloc(sizeof(struct Macro));
-    strncpy(temp->macroName,macroName, sizeof(temp->macroName)-1);
-    temp->macroContent= strdup(macroContent);
-    if (temp->macroContent == NULL){
+
+char* Macro_name(char* line) {
+    int i;
+    char* macroName = NULL;
+    char* lineCopy = strdup(line);
+    if (!lineCopy) {
         print_internal_error(ERROR_CODE_1);
-        free(temp);
+        return NULL;
     }
-    temp->nextMacro = NULL;
-    return temp;
+
+    char* trimmedLine = trim_whitespace(lineCopy);
+    char* token = strtok(trimmedLine, " \t");
+
+    if (token && strcmp(token, "macr") == 0) {
+        token = strtok(NULL, " \t");
+        if (token) {
+            char* newline = strchr(token, '\n');
+            if (newline) {
+                *newline = '\0';
+            }
+            macroName = strdup(token);
+            if (!macroName) {
+                print_internal_error(ERROR_CODE_1);
+                free(lineCopy);
+                return NULL;
+            }
+
+            for (i = 0; i < MAX_KEYWORDS; i++) {
+                if (strcmp(macroName, reserved_keywords[i]) == 0) {
+                    print_internal_error(ERROR_CODE_5);
+                    free(lineCopy);
+                    free(macroName);
+                    return NULL;
+                }
+            }
+        }
+    }
+
+    free(lineCopy);
+    return macroName;
 }
-
-
-

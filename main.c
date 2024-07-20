@@ -1,33 +1,28 @@
-#include "preproc.h"
-#include "errors.h"
-#include "util.h"
-#include "data_struct.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include "preproc.h"
 
 int main() {
-    FILE *inputFile = fopen("input.asm", "r");
-    if (!inputFile) {
-        perror("Failed to open file");
-        return 1;
+    const char* amFile = "/Users/december/Desktop/C Class/ProjectC/ProjectC/input.asm"; // Use the actual absolute path
+    const char* asFile = "/Users/december/Desktop/C Class/ProjectC/ProjectC/output.asm"; // Use the actual absolute path
+
+    FILE *as = fopen(amFile, "r");
+    if (!as) {
+        perror("Error opening input.asm");
+        return EXIT_FAILURE;
     }
 
-    fpos_t position;
-    int lineCount = 0;
-
-    if (fgetpos(inputFile, &position) != 0) {
-        perror("Failed to get file position");
-        return 1;
+    FILE *am = fopen(asFile, "w");
+    if (!am) {
+        perror("Error opening output.asm");
+        fclose(as);
+        return EXIT_FAILURE;
     }
 
-    char *macroContent = save_macr_content(inputFile, &position, &lineCount);
+    process_file(as, am);
 
-    if (macroContent != NULL) {
-        printf("Macro content: %s\n", macroContent);
-        free(macroContent); // Assuming copy_contain allocates memory for the macro content
-    } else {
-        printf("Failed to save macro content\n");
-    }
+    fclose(as);
+    fclose(am);
 
-    fclose(inputFile);
     return 0;
 }

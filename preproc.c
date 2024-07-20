@@ -1,35 +1,49 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "data_struct.h"
-#include "errors.h"
-#include "util.h"
 #include "preproc.h"
+#include "globaldefine.h"
 
-#define MAX_LINE_LENGTH 80
 
-char *save_macr_content(FILE *as,fpos_t *fpos, int *line_count){
-    int macro_length;
-    char *macro;
+
+void process_file(FILE *as, FILE *am) {
+    if (!as || !am) {
+        print_internal_error(ERROR_CODE_4);
+        exit(EXIT_FAILURE);
+    }
     char line[MAX_LINE_LENGTH];
-    if (fsetpos(as,fpos) != 0){
-        print_internal_error(ERROR_CODE_2);
-        return NULL;
+    char in_macro = 0;
+    LinkedListOfMacro* macroTable = (LinkedListOfMacro*)handle_malloc(sizeof(LinkedListOfMacro));
+    if (!macroTable) {
+        print_internal_error(ERROR_CODE_1);
+        exit(EXIT_FAILURE);
     }
-    macro_length =0;
-    line[0] = '\0';
-    while ((fgets(line, MAX_LINE_LENGTH, as)) && !feof(as)) {
-        if (strcmp(line, "endmacr\n") != 0 && strstr(line, "endmacr") != NULL) {
-            print_internal_error(ERROR_CODE_3);
-            return NULL;
+    macroTable->head=NULL;
+    macroTable->tail=NULL;
+    NodeOnList* currentMacro = NULL;
+    while (fgets(line, MAX_LINE_LENGTH, as)!= 0) {
+        size_t len = strlen(line);
+        if (len > 0 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
         }
-        (*line_count)++;
-        if (strcmp(line, "endmacr\n") != 0) {
-            macro_length += strlen(line);
+        if (strstr(line, "endmacr") != NULL) { // if fount stop of declare.
+            if (in_macro) {
+                in_macro = 0;
+                currentMacro = NULL; // End of macro, reset currentMacro
+            }
+        } else if (in_macro) { // if in macro declareation store the content.
+            if (currentMacro != NULL) {
+                add_macro_content(currentMacro, line);
+            }
+        } else if (strstr(line, "macr") != NULL) {
+            addNode(macroTable, line);
+            in_macro = 1;
+            currentMacro = macroTable->tail; // Set currentMacro to the newly added node
         }
+        fputs(line, am);
     }
-
-    macro = copy_contain(as,fpos,macro_length);
-    return macro;
+    free_linked_list(macroTable);
+    free(macroTable);
 }
+

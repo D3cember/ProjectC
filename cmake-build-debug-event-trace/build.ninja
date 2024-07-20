@@ -61,6 +61,24 @@ build CMakeFiles/ProjectC.dir/preproc.c.o: C_COMPILER__ProjectC_unscanned_Debug 
   OBJECT_DIR = CMakeFiles/ProjectC.dir
   OBJECT_FILE_DIR = CMakeFiles/ProjectC.dir
 
+build CMakeFiles/ProjectC.dir/util.c.o: C_COMPILER__ProjectC_unscanned_Debug /Users/december/Desktop/C$ Class/ProjectC/ProjectC/util.c || cmake_object_order_depends_target_ProjectC
+  DEP_FILE = CMakeFiles/ProjectC.dir/util.c.o.d
+  FLAGS = -g -std=gnu90 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics
+  OBJECT_DIR = CMakeFiles/ProjectC.dir
+  OBJECT_FILE_DIR = CMakeFiles/ProjectC.dir
+
+build CMakeFiles/ProjectC.dir/data_struct.c.o: C_COMPILER__ProjectC_unscanned_Debug /Users/december/Desktop/C$ Class/ProjectC/ProjectC/data_struct.c || cmake_object_order_depends_target_ProjectC
+  DEP_FILE = CMakeFiles/ProjectC.dir/data_struct.c.o.d
+  FLAGS = -g -std=gnu90 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics
+  OBJECT_DIR = CMakeFiles/ProjectC.dir
+  OBJECT_FILE_DIR = CMakeFiles/ProjectC.dir
+
+build CMakeFiles/ProjectC.dir/errors.c.o: C_COMPILER__ProjectC_unscanned_Debug /Users/december/Desktop/C$ Class/ProjectC/ProjectC/errors.c || cmake_object_order_depends_target_ProjectC
+  DEP_FILE = CMakeFiles/ProjectC.dir/errors.c.o.d
+  FLAGS = -g -std=gnu90 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fcolor-diagnostics
+  OBJECT_DIR = CMakeFiles/ProjectC.dir
+  OBJECT_FILE_DIR = CMakeFiles/ProjectC.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target ProjectC
@@ -69,7 +87,7 @@ build CMakeFiles/ProjectC.dir/preproc.c.o: C_COMPILER__ProjectC_unscanned_Debug 
 #############################################
 # Link the executable ProjectC
 
-build ProjectC: C_EXECUTABLE_LINKER__ProjectC_Debug CMakeFiles/ProjectC.dir/main.c.o CMakeFiles/ProjectC.dir/preproc.c.o
+build ProjectC: C_EXECUTABLE_LINKER__ProjectC_Debug CMakeFiles/ProjectC.dir/main.c.o CMakeFiles/ProjectC.dir/preproc.c.o CMakeFiles/ProjectC.dir/util.c.o CMakeFiles/ProjectC.dir/data_struct.c.o CMakeFiles/ProjectC.dir/errors.c.o
   FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk
   OBJECT_DIR = CMakeFiles/ProjectC.dir
   POST_BUILD = :

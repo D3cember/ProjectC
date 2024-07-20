@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "data_struct.h"
+#include "util.h"
+#include "preproc.h"
 
 /* Represents an error with an associated error ID and error message */
 typedef struct Error {
@@ -71,6 +73,8 @@ typedef enum ERROR_CODES {
     ERROR_CODE_58,
     ERROR_CODE_59
 } ERROR_CODES;
+
+typedef struct location location;
 
 /**
  * @brief Prints an external error message.
