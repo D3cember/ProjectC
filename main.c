@@ -1,28 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "preproc.h"
+#include "data_struct.h"
+#include "globaldefine.h"
 
 int main() {
-    const char* amFile = "/Users/december/Desktop/C Class/ProjectC/ProjectC/input.asm"; // Use the actual absolute path
-    const char* asFile = "/Users/december/Desktop/C Class/ProjectC/ProjectC/output.asm"; // Use the actual absolute path
-
-    FILE *as = fopen(amFile, "r");
-    if (!as) {
-        perror("Error opening input.asm");
+    FILE *input_file = fopen("input.asm", "r");
+    FILE *output_file = fopen("output.asm", "w");
+    if (!input_file || !output_file) {
+        perror("Error opening file");
         return EXIT_FAILURE;
     }
 
-    FILE *am = fopen(asFile, "w");
-    if (!am) {
-        perror("Error opening output.asm");
-        fclose(as);
-        return EXIT_FAILURE;
-    }
+    process_file(input_file, output_file);
 
-    process_file(as, am);
-
-    fclose(as);
-    fclose(am);
+    fclose(input_file);
+    fclose(output_file);
 
     return 0;
 }
