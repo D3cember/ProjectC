@@ -9,7 +9,9 @@
 #include "data_struct.h"
 
 extern const char *reserved_keywords[20];
-char *copy_contain(FILE *as, fpos_t *fpos, int macro_length);
 char* trim_whitespace(char* str);
+char *Macro_name(const char* line);
+int is_macro_call(const char *line);
+
 
 #endif

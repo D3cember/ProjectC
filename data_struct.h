@@ -28,7 +28,6 @@ typedef struct {
     NodeOnList* tail;
 } LinkedListOfMacro;
 
-char *Macro_name(char* line);
 
 struct location{
     char file;

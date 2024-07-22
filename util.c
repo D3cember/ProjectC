@@ -9,28 +9,6 @@
 #include "preproc.h"
 #include "globaldefine.h"
 
-
-
-char *copy_contain(FILE *as, fpos_t *fpos, int length) {
-    char *string;
-
-    if (fsetpos(as, fpos) != 0) {
-        print_internal_error(ERROR_CODE_2);
-        return NULL;
-    }
-
-    string = handle_malloc((length + 1) * sizeof(char));
-    if (!string) {
-        print_internal_error(ERROR_CODE_1);
-        return NULL;
-    }
-
-    fread(string, sizeof(char), length, as);
-    string[length] = '\0';
-
-    return string;
-}
-
 char* trim_whitespace(char* str) {
     char* end;
 
@@ -45,12 +23,58 @@ char* trim_whitespace(char* str) {
     while (end > str && isspace((unsigned char)*end)) end--;
 
     // Write new null terminator
-    end[1] = '\0';
+    *(end + 1) = 0;
 
     return str;
 }
 
 const char *reserved_keywords[MAX_KEYWORDS] = {"mov","cmp","add","sub","lea","clr","not","inc","dec","jmp","bne","red","prn","jsr","rts","stop",".data",".string",".entry",".extern"};
+char* Macro_name(const char *line) {
+    const char *macr = "macr";
+    const char *ptr = line;
+    char *identifier = (char*)malloc(MAX_LINE_LENGTH * sizeof(char));
+    char *id_ptr = identifier;
 
+    // Skip leading whitespaces
+    while (isspace(*ptr)) {
+        ptr++;
+    }
+
+    // Check if "macr" is present
+    if (strncmp(ptr, macr, strlen(macr)) == 0) {
+        ptr += strlen(macr);
+    }
+
+    // Skip whitespaces after "macr"
+    while (isspace(*ptr)) {
+        ptr++;
+    }
+
+    // Copy the identifier
+    while (*ptr != '\n' && !isspace(*ptr)) {
+        *id_ptr++ = *ptr++;
+    }
+    *id_ptr = '\0';
+
+    return identifier;
+}
+
+int is_macro_call(const char *line) {
+    // Remove leading and trailing whitespace
+    const char *start = line;
+    while (isspace(*start)) {
+        start++;
+    }
+
+    const char *end = start + strlen(start) - 1;
+    while (end > start && isspace(*end)) {
+        end--;
+    }
+
+    // Check if the line contains a single word
+    const char *space = strchr(start, ' ');
+    const char *tab = strchr(start, '\t');
+    return (space == NULL && tab == NULL);
+}
 
 
