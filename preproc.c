@@ -93,5 +93,5 @@ free(macroTable);
 //TODO : 1) check if in the end of decleration "endmacr" there is not extra text ( Done).
 //       2) create method to replace the text when call for macro.
 //       3) check there is no calls for non existent macro.
-//       4) check that macro name isnt start
+//       4) check that macro name isnt start..
 
