@@ -9,4 +9,4 @@
 #include "globaldefine.h"
 
 void process_file(FILE *as, FILE *am);
-#endif // PREPROC_H
+#endif /*PREPROC_H*/ 

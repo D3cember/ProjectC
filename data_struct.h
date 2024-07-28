@@ -1,9 +1,9 @@
 #ifndef DATA_STRUCT_H
 #define DATA_STRUCT_H
 
-#include <stdio.h>  // For FILE type
-#include <stdlib.h> // For malloc and free
-#include <string.h> // For strdup
+#include <stdio.h>  /*For FILE type*/ 
+#include <stdlib.h> /*For malloc and free*/ 
+#include <string.h> /*For strdup*/ 
 #include "globaldefine.h"
 
 
