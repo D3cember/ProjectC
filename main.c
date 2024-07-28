@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "preproc.h"
-#include "data_struct.h"
-#include "globaldefine.h"
+#include "../headers/preproc.h"
+#include "../headers/data_struct.h"
+#include "../headers/globaldefine.h"
 
 int main() {
     FILE *input_file = fopen("input.asm", "r");

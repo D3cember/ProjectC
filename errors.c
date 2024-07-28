@@ -3,8 +3,8 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "errors.h"
-#include "data_struct.h"
+#include "../headers/errors.h"
+#include "../headers/data_struct.h"
 
 /* The Following array specifies the error code numbers and the corresponding error message.
  * Missing lines are intentionally left blank for future error codes

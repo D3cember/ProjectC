@@ -1,11 +1,11 @@
-#include "data_struct.h"
-#include "globaldefine.h"
-#include "errors.h"
-#include "util.h"
+#include "../headers/data_struct.h"
+#include "../headers/globaldefine.h"
+#include "../headers/errors.h"
+#include "../headers/util.h"
 
 
 
-void addNode(LinkedListOfMacro *macroTable , char *line) { // createing node
+void addNode(LinkedListOfMacro *macroTable , char *line) { /*createing node*/ 
     if(macroTable->head==NULL)
     {
         macroTable->head=(NodeOnList*) handle_malloc(sizeof(NodeOnList));
@@ -32,7 +32,7 @@ void add_macro_content(NodeOnList *macro, char *line)
 {
     NodeOfMacroContentList* newNode = (NodeOfMacroContentList*) handle_malloc(sizeof(NodeOfMacroContentList));
     strncpy(newNode->line, line, MAX_LINE_LENGTH - 1);
-    newNode->line[MAX_LINE_LENGTH - 1] = '\0'; // Ensure null termination
+    newNode->line[MAX_LINE_LENGTH - 1] = '\0'; /*Ensure null termination*/ 
     newNode->next = NULL;
     if (macro->Macro_content->head == NULL){
         macro->Macro_content->head = newNode;
@@ -78,6 +78,6 @@ void *handle_malloc(size_t size) {
     }
     return ptr;
 }
- // -------------- TEST ---------------//
+ /* -------------- TEST ---------------*/
 
 

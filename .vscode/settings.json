@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "preproc.h": "c",
+        "data_struct.h": "c",
+        "globaldefine.h": "c",
+        "stdio.h": "c",
+        "util.h": "c",
+        "errors.h": "c"
+    }
+}

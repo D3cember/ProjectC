@@ -2,27 +2,27 @@
 #include "util.h"
 #include <stdlib.h>
 #include <string.h>
-#include "data_struct.h"
-#include "stdio.h"
-#include "util.h"
-#include "errors.h"
-#include "preproc.h"
-#include "globaldefine.h"
+#include <stdio.h>
+#include "../headers/data_struct.h"
+#include "../headers/util.h"
+#include "../headers/errors.h"
+#include "../headers/preproc.h"
+#include "../headers/globaldefine.h"
 
 char* trim_whitespace(char* str) {
     char* end;
 
-    // Trim leading space
+    /*Trim leading space*/ 
     while (isspace((unsigned char)*str)) str++;
 
-    if (*str == 0)  // All spaces?
+    if (*str == 0)  /*All spaces?*/ 
         return str;
 
-    // Trim trailing space
+    /*Trim trailing space*/ 
     end = str + strlen(str) - 1;
     while (end > str && isspace((unsigned char)*end)) end--;
 
-    // Write new null terminator
+    /*Write new null terminator*/ 
     *(end + 1) = 0;
 
     return str;
@@ -35,22 +35,22 @@ char* Macro_name(const char *line) {
     char *identifier = (char*)malloc(MAX_LINE_LENGTH * sizeof(char));
     char *id_ptr = identifier;
 
-    // Skip leading whitespaces
+    /*Skip leading whitespaces*/ 
     while (isspace(*ptr)) {
         ptr++;
     }
 
-    // Check if "macr" is present
+    /*Check if "macr" is present*/ 
     if (strncmp(ptr, macr, strlen(macr)) == 0) {
         ptr += strlen(macr);
     }
 
-    // Skip whitespaces after "macr"
+    /*Skip whitespaces after "macr"*/ 
     while (isspace(*ptr)) {
         ptr++;
     }
 
-    // Copy the identifier
+    /*Copy the identifier*/ 
     while (*ptr != '\n' && !isspace(*ptr)) {
         *id_ptr++ = *ptr++;
     }
@@ -60,7 +60,7 @@ char* Macro_name(const char *line) {
 }
 
 int is_macro_call(const char *line) {
-    // Remove leading and trailing whitespace
+    /*Remove leading and trailing whitespace*/ 
     const char *start = line;
     while (isspace(*start)) {
         start++;
@@ -71,7 +71,7 @@ int is_macro_call(const char *line) {
         end--;
     }
 
-    // Check if the line contains a single word
+    /*Check if the line contains a single word*/ 
     const char *space = strchr(start, ' ');
     const char *tab = strchr(start, '\t');
     return (space == NULL && tab == NULL);

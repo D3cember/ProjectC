@@ -35,10 +35,10 @@ struct location{
     int column;
 };
 
-void addNode(LinkedListOfMacro* macroTable , char *line); // createing node
+void addNode(LinkedListOfMacro* macroTable , char *line); /*createing node*/ 
 void add_macro_content(NodeOnList *macro, char *line);
 void free_macro_content_list(LinkedListOfMacro_Content *macroTabble);
 void free_linked_list(LinkedListOfMacro *list);
 void *handle_malloc(size_t size);
 
-#endif // DATA_STRUCT_H
+#endif /*DATA_STRUCT_H*/ 

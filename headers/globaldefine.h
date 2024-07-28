@@ -12,4 +12,4 @@
 
 
 
-#endif //PROJECTC_GLOBALDEFINE_H
+#endif /* PROJECTC_GLOBALDEFINE_H */
