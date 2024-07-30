@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../headers/data_struct.h"
-#include "../headers/preproc.h"
-#include "../headers/globaldefine.h"
+#include "headers/preproc.h"
+#include "headers/util.h"
+#include "headers/globaldefine.h"
+#include "headers/errors.h"
 
 /* --------- TEST-------------- */
 int check_endmacr_format(const char *line) {
@@ -22,8 +23,9 @@ int check_endmacr_format(const char *line) {
 }
 
 NodeOnList* find_macro(LinkedListOfMacro *macroTable, const char *name) {
+    NodeOnList *current;
+    current = macroTable->head;
     if (!macroTable || !name) return NULL;
-    NodeOnList *current = macroTable->head;
     while (current) {
         if (current->name && strcmp(current->name, name) == 0) {
             return current;
@@ -34,20 +36,22 @@ NodeOnList* find_macro(LinkedListOfMacro *macroTable, const char *name) {
 }
 
 void process_file(FILE *as, FILE *am) {
+    char in_macro = 0;  
+    char line[MAX_LINE_LENGTH];
+    LinkedListOfMacro *macroTable = (LinkedListOfMacro *) handle_malloc(sizeof(LinkedListOfMacro));
+    NodeOnList *currentMacro = NULL;
+    macroTable->head = NULL;
+    macroTable->tail = NULL;
     if (!as || !am) {
         print_internal_error(ERROR_CODE_4);
         exit(EXIT_FAILURE);
     }
-    char line[MAX_LINE_LENGTH];
-    char in_macro = 0;
-    LinkedListOfMacro *macroTable = (LinkedListOfMacro *) handle_malloc(sizeof(LinkedListOfMacro));
+
     if (!macroTable) {
         print_internal_error(ERROR_CODE_1);
         exit(EXIT_FAILURE);
     }
-    macroTable->head = NULL;
-    macroTable->tail = NULL;
-    NodeOnList *currentMacro = NULL;
+
     while (fgets(line, MAX_LINE_LENGTH, as) != 0) {
         char *identifier = Macro_name(line);
 /*--------- CASE 1: End of macro decleration ----------*/

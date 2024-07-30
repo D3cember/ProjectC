@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "headers/util.h"
+#include "headers/errors.h"
 
-#include "../headers/errors.h"
-#include "../headers/data_struct.h"
 
 /* The Following array specifies the error code numbers and the corresponding error message.
  * Missing lines are intentionally left blank for future error codes
@@ -28,3 +28,4 @@ void print_external_error(int error_code, location file) {
     printf("~~ERROR: ID:%d~~ in %c at line:%d | there is error: %s\n", error_code, \
     file.file, file.line, errors[error_code].error_msg);
 }
+

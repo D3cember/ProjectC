@@ -1,7 +1,11 @@
-#include "../headers/data_struct.h"
-#include "../headers/globaldefine.h"
-#include "../headers/errors.h"
-#include "../headers/util.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "headers/data_struct.h"
+#include "headers/util.h"
+#include "headers/errors.h"
+
+
 
 
 
@@ -78,6 +82,5 @@ void *handle_malloc(size_t size) {
     }
     return ptr;
 }
- /* -------------- TEST ---------------*/
 
 

@@ -5,9 +5,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "globaldefine.h"
+#include "preproc.h"
 #include "data_struct.h"
 #include "util.h"
-#include "preproc.h"
 
 /* Represents an error with an associated error ID and error message */
 typedef struct Error {

@@ -1,13 +1,11 @@
-
-#include "util.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include "../headers/data_struct.h"
-#include "../headers/util.h"
-#include "../headers/errors.h"
-#include "../headers/preproc.h"
-#include "../headers/globaldefine.h"
+#include <stdarg.h>
+#include "headers/util.h"
+#include "headers/errors.h"
+
+
 
 char* trim_whitespace(char* str) {
     char* end;
@@ -60,20 +58,24 @@ char* Macro_name(const char *line) {
 }
 
 int is_macro_call(const char *line) {
-    /*Remove leading and trailing whitespace*/ 
     const char *start = line;
+    const char *end;
+    const char *space;
+    const char *tab;
+
+    /*Remove leading and trailing whitespace*/ 
     while (isspace(*start)) {
         start++;
     }
 
-    const char *end = start + strlen(start) - 1;
+    end = start + strlen(start) - 1;
     while (end > start && isspace(*end)) {
         end--;
     }
 
     /*Check if the line contains a single word*/ 
-    const char *space = strchr(start, ' ');
-    const char *tab = strchr(start, '\t');
+    space = strchr(start, ' ');
+    tab = strchr(start, '\t');
     return (space == NULL && tab == NULL);
 }
 

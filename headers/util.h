@@ -1,7 +1,6 @@
 #ifndef PROJECTC_UTIL_H
 #define PROJECTC_UTIL_H
 
-
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
