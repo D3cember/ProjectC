@@ -5,6 +5,8 @@
         "globaldefine.h": "c",
         "stdio.h": "c",
         "util.h": "c",
-        "errors.h": "c"
-    }
+        "errors.h": "c",
+        "first_pass.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

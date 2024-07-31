@@ -9,6 +9,7 @@
 
 
 
+
 void addNode(LinkedListOfMacro *macroTable , char *line) { /*createing node*/ 
     if(macroTable->head==NULL)
     {
@@ -81,6 +82,68 @@ void *handle_malloc(size_t size) {
         exit(EXIT_FAILURE);
     }
     return ptr;
+}
+
+
+
+void add_symbol(const char *name, int address) {
+    Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
+    if (!new_symbol) {
+        perror("Failed to allocate memory for new symbol");
+        exit(EXIT_FAILURE);
+    }
+    new_symbol->name = strdup(name); 
+    if (!new_symbol->name) {
+        perror("Failed to allocate memory for symbol name");
+        exit(EXIT_FAILURE);
+    }
+    new_symbol->address = address;
+    new_symbol->next = symbol_table;
+    symbol_table = new_symbol;
+}
+
+/*------------------- TEST ----------------------- */
+
+
+void print_symbol_table(const char *filename) {
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        perror("Failed to open file for writing");
+        return;
+    }
+
+    Symbol *current;
+    current = symbol_table;
+    while (current) {
+        fprintf(file, "%s\t%d\n", current->name, current->address);
+        current = current->next;
+    }
+
+    fclose(file);
+}
+
+
+void free_symbol_table(void) {
+    Symbol *current = symbol_table;
+    while (current) {
+        Symbol *to_free = current;
+        current = current->next;
+        free(to_free->name); 
+        free(to_free);
+    }
+    symbol_table = NULL;
+}
+
+/*------------------- TEST ----------------------- */
+
+int count_data_items(const char *data) {
+    int count = 1;
+    const char *p = data;
+    while ((p = strchr(p, ',')) != NULL) {
+        count++;
+        p++;
+    }
+    return count;
 }
 
 

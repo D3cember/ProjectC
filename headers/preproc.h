@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <string.h>
 #include "data_struct.h"
-#include "globaldefine.h"
+
 
 int check_endmacr_format(const char *line);
 NodeOnList* find_macro(LinkedListOfMacro *macroTable, const char *name);

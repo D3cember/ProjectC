@@ -20,7 +20,7 @@ typedef struct NodeOnList {
     LinkedListOfMacro_Content* Macro_content;
 } NodeOnList;
 
-typedef struct {
+typedef struct LinkedListOfMacro{ 
     NodeOnList* head;
     NodeOnList* tail;
 } LinkedListOfMacro;
@@ -32,12 +32,28 @@ struct location{
     int column;
 };
 
+typedef struct Symbol{
+    char *name;
+    int address;
+    struct Symbol *next;
+} Symbol;
+
+static Symbol *symbol_table = NULL;
+
+
 void addNode(LinkedListOfMacro* macroTable , char *line); /*createing node*/ 
 void add_macro_content(NodeOnList *macro, char *line);
 void free_macro_content_list(LinkedListOfMacro_Content *macroTabble);
 void free_linked_list(LinkedListOfMacro *list);
 void *handle_malloc(size_t size);
+int count_data_items(const char *data);
+void add_symbol(const char *label, int address);
+void print_symbol_table(const char *filename);
+void free_symbol_table(void);
 
-#endif /*DATA_STRUCT_H*/ 
+
+
+
+#endif 
 
 
