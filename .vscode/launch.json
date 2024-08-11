@@ -6,7 +6,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/projectc",
-            "args": [],
+            "args": ["input"],
             "cwd": "${workspaceFolder}",
             "stopOnEntry": false,
             "runInTerminal": true,

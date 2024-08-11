@@ -9,9 +9,6 @@ LOOP:   prn     #48
         mov     *r6,K
         sub     r1,r4
         m_macr
-        macr    m_drive
-        cmp     r2,#-6
-        endmacr
         dec     K
         jmp     LOOP
 END:    stop

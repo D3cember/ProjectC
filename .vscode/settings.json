@@ -3,10 +3,10 @@
         "preproc.h": "c",
         "data_struct.h": "c",
         "globaldefine.h": "c",
-        "stdio.h": "c",
+        "first_pass.h": "c",
         "util.h": "c",
         "errors.h": "c",
-        "first_pass.h": "c"
+        "stdio.h": "c",
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

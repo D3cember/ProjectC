@@ -1,13 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "headers/data_struct.h"
+
 #include "headers/util.h"
 #include "headers/errors.h"
-
-
-
-
 
 
 void addNode(LinkedListOfMacro *macroTable , char *line) { /*createing node*/ 
@@ -83,36 +79,58 @@ void *handle_malloc(size_t size) {
     }
     return ptr;
 }
+Symbol *symbol_table = NULL;
 
+int add_symbol(const char *name, int address, int is_external) {
+    Symbol *new_symbol;
+    Symbol *current;
+    char *name_copy;
 
+    current = symbol_table;
+    while (current != NULL) {
+        if (strcmp(current->name, name) == 0) {
+            return 0; /* תווית קיימת */
+        }
+        current = current->next;
+    }
 
-void add_symbol(const char *name, int address) {
-    Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
-    if (!new_symbol) {
-        perror("Failed to allocate memory for new symbol");
+    new_symbol = (Symbol *)malloc(sizeof(Symbol));
+    if (new_symbol == NULL) {
+        print_internal_error(ERROR_CODE_11);
         exit(EXIT_FAILURE);
     }
-    new_symbol->name = strdup(name); 
-    if (!new_symbol->name) {
-        perror("Failed to allocate memory for symbol name");
+
+    name_copy = (char *)malloc(strlen(name) + 1);
+    if (name_copy == NULL) {
+        print_internal_error(ERROR_CODE_11);
         exit(EXIT_FAILURE);
     }
+    strcpy(name_copy, name);
+
+    new_symbol->name = name_copy;
     new_symbol->address = address;
+    new_symbol->is_external = is_external;
     new_symbol->next = symbol_table;
     symbol_table = new_symbol;
+
+    printf("Symbol added: %s with address %d, external: %d\n", name, address, is_external);
+    return 1;
 }
+
+  
 
 /*------------------- TEST ----------------------- */
 
-
 void print_symbol_table(const char *filename) {
-    FILE *file = fopen(filename, "w");
+    FILE *file;
+    Symbol *current; 
+
+    file = fopen(filename, "w");
     if (!file) {
         perror("Failed to open file for writing");
         return;
     }
 
-    Symbol *current;
     current = symbol_table;
     while (current) {
         fprintf(file, "%s\t%d\n", current->name, current->address);
@@ -121,7 +139,6 @@ void print_symbol_table(const char *filename) {
 
     fclose(file);
 }
-
 
 void free_symbol_table(void) {
     Symbol *current = symbol_table;
@@ -133,17 +150,7 @@ void free_symbol_table(void) {
     }
     symbol_table = NULL;
 }
-
 /*------------------- TEST ----------------------- */
 
-int count_data_items(const char *data) {
-    int count = 1;
-    const char *p = data;
-    while ((p = strchr(p, ',')) != NULL) {
-        count++;
-        p++;
-    }
-    return count;
-}
 
 

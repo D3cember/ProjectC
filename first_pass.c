@@ -1,15 +1,36 @@
 #include <stdio.h>
 #include <string.h>
-#include "headers/data_struct.h"
-#include "headers/util.h"
-#include "headers/globaldefine.h"
+
 #include "headers/errors.h"
+#include "headers/globaldefine.h"
+#include "headers/util.h"
+
+
+int count_data_items(const char *data) {
+    int count = 1;
+    const char *p = data;
+    while ((p = strchr(p, ',')) != NULL) {
+        count++;
+        p++;
+    }
+    return count;
+}
+
+const char *instr[OPERATION_AMMOUNT] = {"add", "sub", "mov", "cmp", "lea", "clr", "not", "inc", "dec", "jmp", "bne", "jsr", "red", "prn", "rts","stop"};
+int instructionCheck(const char *word) {
+    int i;
+    for (i = 0; instr[i] != NULL; i++) {
+        if (strcmp(word, instr[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void first_pass(const char *filename) {
     FILE *file;
     char line[256];
-    int IC = IC_START;
-    int DC = DC_START;
+    int IC, DC;
     char *label;
     char *instruction;
     char *operand;
@@ -18,76 +39,202 @@ void first_pass(const char *filename) {
 
     file = fopen(filename, "r");
     if (!file) {
-        perror("Failed to open file");
+        print_internal_error(ERROR_CODE_4);
         return;
     }
 
+    IC = IC_START;
+    DC = DC_START;
+
     while (fgets(line, sizeof(line), file)) {
-        /* הסרת תווים לא רצויים */
         p = strtok(line, "\n");
-        if (!p) {
+        if (!p || line[0] == ';' || line[0] == '\0') {
             continue;
         }
 
-        /* התעלמות משורות ריקות או הערות */
-        if (line[0] == ';' || line[0] == '\0') {
-            continue;
-        }
-
-        /* ניתוח השורה */
         label = NULL;
         instruction = NULL;
         operand = NULL;
-
-        /* זיהוי תווית */
         colon_pos = strchr(line, ':');
         if (colon_pos) {
-            *colon_pos = '\0'; /* חיתוך התו ':' */
+            *colon_pos = '\0';
             label = line;
             instruction = colon_pos + 1;
-            while (*instruction == ' ') instruction++; /* דילוג על רווחים */
+            while (*instruction == ' ') instruction++;
         } else {
             instruction = line;
         }
 
-        /* עדכון טבלת הסמלים אם יש תווית */
-        if (label) {
-            if (strcmp(instruction, ".data") == 0 || strcmp(instruction, ".string") == 0) {
-                add_symbol(label, DC); /* סמל עבור נתונים */
-            } else {
-                add_symbol(label, IC + IC_BASE); /* סמל עבור הוראות */
-            }
-        }
-
-        /* פיצול פקודה ואופרנדים */
         operand = strtok(instruction, " ");
         if (operand) {
             instruction = operand;
             operand = strtok(NULL, "");
         }
 
-        /* עדכון IC ו-DC בהתאם לפקודה או לנתונים */
-        if (strcmp(instruction, ".data") == 0) {
-            DC += count_data_items(operand); /* פונקציה לספירת פריטי הנתונים */
-        } else if (strcmp(instruction, ".string") == 0) {
-            DC += strlen(operand) - 2 + 1; /* אורך המחרוזת + '\0' */
+        if (label && is_reserved_keyword(label)) {
+            print_internal_error(ERROR_CODE_8);
+        }
+
+        if (strcmp(instruction, ".data") == 0 || strcmp(instruction, ".string") == 0) {
+            if (label) {
+                add_symbol(label, DC + IC, 0);
+            }
+            if (strcmp(instruction, ".data") == 0) {
+                encode_data(operand, &DC);
+            } else if (strcmp(instruction, ".string") == 0) {
+                encode_string(operand, &DC);
+            }
+            continue;
+        }
+
+        if (strcmp(instruction, ".entry") == 0) {
+            while ((operand = strtok(NULL, ", ")) != NULL) {
+                handle_entry(operand);
+            }
+            continue;
+        }
+
+        if (strcmp(instruction, ".extern") == 0) {
+            while ((operand = strtok(NULL, ", ")) != NULL) {
+                handle_extern(operand);
+            }
+            continue;
+        }
+
+        if (label && instructionCheck(instruction)) {
+            add_symbol(label, IC, 0);
+        }
+
+        if (instructionCheck(instruction)) {
+            IC += instructionLength(instruction, operand);
+            printf("Instruction: %s, new IC: %d\n", instruction, IC);
         } else {
-            IC += 1; /* עבור פקודות, נניח שכל פקודה אורכה מילה אחת */
+            printf("Unknown instruction: %s\n", instruction);
         }
     }
 
     fclose(file);
 
-    /* הוספת 100 לערכים בטבלת הסמלים שאופיינו כנתונים */
-    adjust_data_symbols(IC_BASE);
+    adjust_data_symbols(IC);
 }
 
-void adjust_data_symbols(int base) {
+
+/* פונקציה להוספת 100 לערכים בטבלת הסמלים שאופיינו כנתונים */
+void adjust_data_symbols(int IC) {
     Symbol *current = symbol_table;
     while (current) {
-        if (current->address < IC_BASE) {
-            current->address += base;
+        if (current->address >= IC_START) {
+            current->address += IC_BASE;
         }
         current = current->next;
+    }
+}
+
+
+
+void encode_data(const char *operand, int *DC) {
+    int value;
+    const char *p;
+    char *endptr;
+
+    p = operand;
+    while (p != NULL) {
+        while (*p == ' ' || *p == '\t') {
+            p++;
+        }
+
+        if (*p == '+' || *p == '-' || (*p >= '0' && *p <= '9')) {
+            value = strtol(p, &endptr, 10);
+            if (p == endptr) {
+                print_internal_error(ERROR_CODE_9);
+                return;
+            }
+            printf("Encoded data at %d: %d\n", *DC + IC_START, value);
+            (*DC)++;
+            p = endptr;
+        } else {
+            print_internal_error(ERROR_CODE_5);
+            return;
+        }
+
+        p = strchr(p, ',');
+        if (p != NULL) p++;
+    }
+}
+
+/* פונקציה לקידוד מחרוזות בזיכרון */
+void encode_string(const char *operand, int *DC) {
+    int length, i;
+    const char *p;
+
+    p = operand;
+    while (*p == ' ' || *p == '\t') {
+        p++;
+    }
+    if (*p == '\"') {
+        p++;
+    }
+
+    length = strlen(p);
+    for (i = 0; i < length && p[i] != '\"'; i++) {
+        if ((p[i] < 32 || p[i] > 126) && p[i] != '\t') {
+            print_internal_error(ERROR_CODE_5);
+            return;
+        }
+        printf("Encoded string at %d: %c\n", *DC + IC_START, p[i]);
+        (*DC)++;
+    }
+
+    printf("Encoded string at %d: \\0\n", *DC + IC_START);
+    (*DC)++;
+}
+
+
+int instructionLength(const char *instruction, const char *operand) {
+    int length = 1;
+    char *op1, *op2;
+    op1 = strtok((char *)operand, ", ");
+    op2 = strtok(NULL, ", ");
+
+    if (op1 && op2 && op1[0] == 'r' && op2[0] == 'r') {
+        length += 1;
+    } else if (strcmp(instruction, "mov") == 0 || strcmp(instruction, "cmp") == 0 || strcmp(instruction, "add") == 0 ||
+               strcmp(instruction, "sub") == 0 || strcmp(instruction, "lea") == 0) {
+        length += 2;
+    } else if (strcmp(instruction, "clr") == 0 || strcmp(instruction, "not") == 0 || strcmp(instruction, "inc") == 0 ||
+               strcmp(instruction, "dec") == 0 || strcmp(instruction, "jmp") == 0 || strcmp(instruction, "bne") == 0 ||
+               strcmp(instruction, "jsr") == 0 || strcmp(instruction, "red") == 0 || strcmp(instruction, "prn") == 0) {
+        length += 1;
+    }
+    return length;
+}
+
+
+int is_reserved_keyword(const char *label) {
+    int i;
+    for (i = 0; i < MAX_KEYWORDS; i++) {
+        if (strcmp(label, reserved_keywords[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* פונקציה לטיפול בתוויות .entry */
+void handle_entry(const char *label) {
+    Symbol *sym = symbol_table;
+    while (sym != NULL) {
+        if (strcmp(sym->name, label) == 0) {
+            /* ניתן להוסיף טיפול ספציפי לתוויות entry אם נדרש */
+            return;
+        }
+        sym = sym->next;
+    }
+    print_internal_error(ERROR_CODE_7); /* תווית לא מוגדרת */
+}
+
+void handle_extern(const char *label) {
+    if (!add_symbol(label, 0, 1)) {
+        print_internal_error(ERROR_CODE_7); /* תווית קיימת כבר עם שם אחר */
     }
 }

@@ -1,22 +1,28 @@
-all: projectC
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -Wextra -pedantic -std=c90 -g
 
-projectC: data_struct.o errors.o preproc.o util.o main.o
-	gcc -Wall -Wextra -pedantic -std=c90 -g -o projectC data_struct.o errors.o preproc.o util.o main.o
+# Source and object files
+SRCS = main.c data_struct.c errors.c first_pass.c preproc.c util.c
+OBJS = $(SRCS:.c=.o)
 
-data_struct.o: data_struct.c
-	gcc -Wall -Wextra -pedantic -std=c90 -g -c -o data_struct.o data_struct.c
+# Include directory
+INCLUDES = -I headers
 
-errors.o: errors.c
-	gcc -Wall -Wextra -pedantic -std=c90 -g -c -o errors.o errors.c
+# Target executable
+TARGET = projectC
 
-preproc.o: preproc.c
-	gcc -Wall -Wextra -pedantic -std=c90 -g -c -o preproc.o preproc.c
+# Default target
+all: $(TARGET)
 
-util.o: util.c
-	gcc -Wall -Wextra -pedantic -std=c90 -g -c -o util.o util.c
+# Link the target executable
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
 
-main.o: main.c
-	gcc -Wall -Wextra -pedantic -std=c90 -g -c -o main.o main.c
+# Compile source files to object files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
+# Clean up object files and executable
 clean:
-	rm -f *.o projectC
+	rm -f $(OBJS) $(TARGET)

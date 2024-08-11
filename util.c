@@ -6,27 +6,7 @@
 #include "headers/errors.h"
 
 
-
-char* trim_whitespace(char* str) {
-    char* end;
-
-    /*Trim leading space*/ 
-    while (isspace((unsigned char)*str)) str++;
-
-    if (*str == 0)  /*All spaces?*/ 
-        return str;
-
-    /*Trim trailing space*/ 
-    end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end)) end--;
-
-    /*Write new null terminator*/ 
-    *(end + 1) = 0;
-
-    return str;
-}
-
-const char *reserved_keywords[MAX_KEYWORDS] = {"mov","cmp","add","sub","lea","clr","not","inc","dec","jmp","bne","red","prn","jsr","rts","stop",".data",".string",".entry",".extern"};
+const char *reserved_keywords[MAX_KEYWORDS] = {"mov","cmp","add","sub","lea","clr","not","inc","dec","jmp","bne","red","prn","jsr","rts","stop",".data",".string",".entry",".extern","r0","r1","r2","r3","r4","r5","r6","r7","macr","endmacr"};
 char* Macro_name(const char *line) {
     const char *macr = "macr";
     const char *ptr = line;
@@ -53,6 +33,7 @@ char* Macro_name(const char *line) {
         *id_ptr++ = *ptr++;
     }
     *id_ptr = '\0';
+    
 
     return identifier;
 }
@@ -78,5 +59,44 @@ int is_macro_call(const char *line) {
     tab = strchr(start, '\t');
     return (space == NULL && tab == NULL);
 }
+int check_macro_declaration_format(const char *line) {
+    const char *macr = "macr";
+    const char *ptr = line;
+    
+    /*Skip leading whitespaces*/
+    while (isspace(*ptr)) {
+        ptr++;
+    }
 
+    /* Check if "macr" is present at the beginning */
+    if (strncmp(ptr, macr, strlen(macr)) != 0) {
+        return 0;
+    }
+    ptr += strlen(macr);
+
+    /* Skip whitespaces after "macr" */
+    while (isspace(*ptr)) {
+        ptr++;
+    }
+
+    /* Check if macro name is valid */
+    if (!*ptr || !isalpha((unsigned char)*ptr)) {
+        return 0;
+    }
+
+    /* Move ptr to the end of the macro name */
+    while (*ptr && (isalnum((unsigned char)*ptr) || *ptr == '_')) {
+        ptr++;
+    }
+
+    /* Ensure no extra non-whitespace characters after the macro name */
+    while (*ptr) {
+        if (!isspace(*ptr)) {
+            return 0;
+        }
+        ptr++;
+    }
+
+    return 1;
+}
 
