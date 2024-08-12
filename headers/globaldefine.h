@@ -24,6 +24,7 @@
 
 #define AM_FILE ".am"
 
+#define MAX_LABEL_LENGTH 31
 
 
 

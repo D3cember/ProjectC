@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include "headers/util.h"
 #include "headers/errors.h"
+#include "headers/preproc.h"
 
 
 const char *reserved_keywords[MAX_KEYWORDS] = {"mov","cmp","add","sub","lea","clr","not","inc","dec","jmp","bne","red","prn","jsr","rts","stop",".data",".string",".entry",".extern","r0","r1","r2","r3","r4","r5","r6","r7","macr","endmacr"};
@@ -99,4 +100,8 @@ int check_macro_declaration_format(const char *line) {
 
     return 1;
 }
+
+
+
+
 

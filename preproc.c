@@ -6,7 +6,7 @@
 #include "headers/globaldefine.h"
 #include "headers/errors.h"
 
-    int check_endmacr_format(const char *line)
+int check_endmacr_format(const char *line)
 {
     const char *ptr = strstr(line, "endmacr");
     if (!ptr)
@@ -122,7 +122,6 @@ void process_file(char *as, char *am)
         }
     }
     free_linked_list(macroTable);
-    free(macroTable);
     fclose(inputFile);
     fclose(outputFile);
 }

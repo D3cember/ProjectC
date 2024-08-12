@@ -21,7 +21,8 @@ int main(int argc , char *argv[]) {
         {
             /* Copy the base file name without suffix from the command line arguments */
             strncpy(fileName, argv[i], sizeof(fileName) - 1);
-            fileName[sizeof(fileName) - 1] = '\0';  /* Ensure null termination */            strcpy(fileNameAss, fileName);
+            fileName[sizeof(fileName) - 1] = '\0';  /* Ensure null termination */            
+            strcpy(fileNameAss, fileName);
             strcat(fileNameAss, AS_FILE);
 
             strcpy(fileNameAm, fileName);

@@ -7,6 +7,9 @@
         "util.h": "c",
         "errors.h": "c",
         "stdio.h": "c",
+        "__locale": "c",
+        "cctype": "c",
+        "locale": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

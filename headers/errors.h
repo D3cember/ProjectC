@@ -1,13 +1,13 @@
 #ifndef LABRATORY_C_FINAL_PROJECT_ERRORS_H
 #define LABRATORY_C_FINAL_PROJECT_ERRORS_H
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "data_struct.h"
 #include "globaldefine.h"
+#include "first_pass.h"
 
 
 /* Represents an error with an associated error ID and error message */
@@ -37,6 +37,8 @@ typedef enum ERROR_CODES {
     ERROR_CODE_15,
     ERROR_CODE_16,
     ERROR_CODE_17,
+    ERROR_CODE_18,
+    ERROR_CODE_19,
     /* Enumeration skip for future macro related errors */
 
     /* The following errors are related to reading command assembly lines */
@@ -76,7 +78,6 @@ typedef enum ERROR_CODES {
 } ERROR_CODES;
 
 typedef struct location location;
-
 /**
  * @brief Prints an external error message.
  *

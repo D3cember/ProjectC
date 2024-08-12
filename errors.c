@@ -28,8 +28,8 @@ Error errors[] = {
         {ERROR_CODE_15," - FIRST_PASS - : .data parameter is out of range."},
         {ERROR_CODE_16," - FIRST_PASS - :Label name is invaild."},
         {ERROR_CODE_17," - FIRST_PASS - :Label name is already saved."},
-
-
+        {ERROR_CODE_18,"Given operands exceeds the limit"},
+        {ERROR_CODE_19,"Label name is not valid."}
 
 };
 

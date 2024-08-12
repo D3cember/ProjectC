@@ -2,6 +2,7 @@
 #define DATA_STRUCT_H
 
 #include "globaldefine.h"
+#include "errors.h"
 
 typedef struct NodeOfMacroContentList {
     char line[MAX_LINE_LENGTH];
