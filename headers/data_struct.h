@@ -25,10 +25,15 @@ typedef struct LinkedListOfMacro{
 } LinkedListOfMacro;
 
 
-struct location{
+/*struct location{
     char file;
     int line;
     int column;
+};*/
+struct location {
+    char *file_name;
+    int line_num;
+    char *col;
 };
 
 typedef struct Symbol{

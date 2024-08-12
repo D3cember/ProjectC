@@ -96,13 +96,13 @@ int add_symbol(const char *name, int address, int is_external) {
 
     new_symbol = (Symbol *)malloc(sizeof(Symbol));
     if (new_symbol == NULL) {
-        print_internal_error(ERROR_CODE_11);
+        print_internal_error(ERROR_CODE_1);
         exit(EXIT_FAILURE);
     }
 
     name_copy = (char *)malloc(strlen(name) + 1);
     if (name_copy == NULL) {
-        print_internal_error(ERROR_CODE_11);
+        print_internal_error(ERROR_CODE_1);
         exit(EXIT_FAILURE);
     }
     strcpy(name_copy, name);

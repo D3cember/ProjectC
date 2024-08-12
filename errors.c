@@ -18,11 +18,19 @@ Error errors[] = {
         {ERROR_CODE_5," Macro name invaild."},
         {ERROR_CODE_6,"Macro declare invaild."},
         {ERROR_CODE_7,"Operation name is invaild."},
-        {ERROR_CODE_8," - FIRST_PASS - : Label name is a reserved name."},
+        {ERROR_CODE_8,"Label name is a reserved name."},
         {ERROR_CODE_9," - FIRST_PASS - : .data Parameters are invaild."},
         {ERROR_CODE_10," - FIRST_PASS - :.string Values in string are invaild."},
         {ERROR_CODE_11," - FIRST_PASS - : Failed to allocate memory for new symbol"},
         {ERROR_CODE_12,"File must contain valid name !\n"}, /* Used in main errors*/
+        {ERROR_CODE_13,"Unkown Instruction."},
+        {ERROR_CODE_14," - FIRST_PASS - : .string parameter is out of range."},
+        {ERROR_CODE_15," - FIRST_PASS - : .data parameter is out of range."},
+        {ERROR_CODE_16," - FIRST_PASS - :Label name is invaild."},
+        {ERROR_CODE_17," - FIRST_PASS - :Label name is already saved."},
+
+
+
 };
 
 /*
@@ -39,7 +47,7 @@ void print_internal_error(int error_code) {
 
 void print_external_error(int error_code, location file) {
     /* Print the error code number, file name, assembly line number and the error message */
-    printf("~~ERROR: ID:%d~~ in %c at line:%d | there is error: %s\n", error_code, \
-    file.file, file.line, errors[error_code].error_msg);
+    printf("~~ERROR: ID:%d~~ in %s at line:%d at colonum : %s | there is error: %s\n", error_code, \
+    file.file_name, file.line_num,file.col, errors[error_code].error_msg);
 }
 

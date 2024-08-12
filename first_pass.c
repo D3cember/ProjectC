@@ -19,7 +19,7 @@ int count_data_items(const char *data) {
 const char *instr[OPERATION_AMMOUNT] = {"add", "sub", "mov", "cmp", "lea", "clr", "not", "inc", "dec", "jmp", "bne", "jsr", "red", "prn", "rts","stop"};
 int instructionCheck(const char *word) {
     int i;
-    for (i = 0; instr[i] != NULL; i++) {
+    for (i = 0; i < OPERATION_AMMOUNT; i++) { 
         if (strcmp(word, instr[i]) == 0) {
             return 1;
         }
@@ -27,7 +27,7 @@ int instructionCheck(const char *word) {
     return 0;
 }
 
-void first_pass(const char *filename) {
+void first_pass(char *filename) {
     FILE *file;
     char line[256];
     int IC, DC;
@@ -36,22 +36,38 @@ void first_pass(const char *filename) {
     char *operand;
     char *colon_pos;
     char *p;
+    int lineC = 0;
+    location *amFile = NULL;
 
     file = fopen(filename, "r");
     if (!file) {
         print_internal_error(ERROR_CODE_4);
         return;
     }
+    amFile = handle_malloc(sizeof(struct location));
+    if (amFile == NULL)
+    {
+        print_internal_error(ERROR_CODE_1);
+        free(amFile);
+        return;
+    }
+    
 
     IC = IC_START;
     DC = DC_START;
 
+
+
     while (fgets(line, sizeof(line), file)) {
+        lineC++;
         p = strtok(line, "\n");
         if (!p || line[0] == ';' || line[0] == '\0') {
             continue;
         }
-
+        
+        amFile->file_name = filename;
+        amFile->line_num = lineC;
+        
         label = NULL;
         instruction = NULL;
         operand = NULL;
@@ -70,9 +86,9 @@ void first_pass(const char *filename) {
             instruction = operand;
             operand = strtok(NULL, "");
         }
-
+            amFile->col = label;
         if (label && is_reserved_keyword(label)) {
-            print_internal_error(ERROR_CODE_8);
+            print_external_error(8,*amFile);
         }
 
         if (strcmp(instruction, ".data") == 0 || strcmp(instruction, ".string") == 0) {
@@ -105,11 +121,12 @@ void first_pass(const char *filename) {
             add_symbol(label, IC, 0);
         }
 
+        amFile->col = instruction;
         if (instructionCheck(instruction)) {
             IC += instructionLength(instruction, operand);
             printf("Instruction: %s, new IC: %d\n", instruction, IC);
         } else {
-            printf("Unknown instruction: %s\n", instruction);
+            print_external_error(13,*amFile);
         }
     }
 
@@ -153,7 +170,7 @@ void encode_data(const char *operand, int *DC) {
             (*DC)++;
             p = endptr;
         } else {
-            print_internal_error(ERROR_CODE_5);
+            print_internal_error(ERROR_CODE_9);
             return;
         }
 
@@ -178,7 +195,7 @@ void encode_string(const char *operand, int *DC) {
     length = strlen(p);
     for (i = 0; i < length && p[i] != '\"'; i++) {
         if ((p[i] < 32 || p[i] > 126) && p[i] != '\t') {
-            print_internal_error(ERROR_CODE_5);
+            print_internal_error(ERROR_CODE_14);
             return;
         }
         printf("Encoded string at %d: %c\n", *DC + IC_START, p[i]);
@@ -230,11 +247,11 @@ void handle_entry(const char *label) {
         }
         sym = sym->next;
     }
-    print_internal_error(ERROR_CODE_7); /* תווית לא מוגדרת */
+    print_internal_error(ERROR_CODE_16); /* תווית לא מוגדרת */
 }
 
 void handle_extern(const char *label) {
     if (!add_symbol(label, 0, 1)) {
-        print_internal_error(ERROR_CODE_7); /* תווית קיימת כבר עם שם אחר */
+        print_internal_error(ERROR_CODE_17); /* תווית קיימת כבר עם שם אחר */
     }
 }

@@ -6,7 +6,7 @@
 
 int count_data_items(const char *data);
 int instruction(const char *word);
-void first_pass(const char *filename);
+void first_pass(char *filename);
 void adjust_data_symbols(int base);
 const char *instr[16];
 void encode_data(const char *operand , int *DC);
