@@ -1,5 +1,0 @@
-K	128
-LIST	126
-STR	121
-END	120
-m_drive	103

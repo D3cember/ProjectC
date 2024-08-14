@@ -1,10 +1,10 @@
-MAIN1  err     r3,LIST,r4
-e3     prn     #48
+MAIN1:   lea     r3  ,   LIST  ,   r4
+e3     prn      
         lea     STR,r6
-m_drive:  inc     r6
+m_dog:  inc     r6`
         mov     *r6,K
         sub     r1,r4
-        cmp     r3,#-6
+m_macr  cmp     r3,#-6
         bne     END
         dec     K
         jmp     LOOP

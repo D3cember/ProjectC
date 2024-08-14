@@ -34,7 +34,7 @@ int main(int argc , char *argv[]) {
             process_file(fileNameAss,fileNameAm);
             printf("\n\n");
             printf("----- Starting First Pass ------\n");
-            first_pass(fileNameAm);
+             first_pass(fileNameAm);
             /* ------ FOR TESTING --------   */
             print_symbol_table(symbol_table_filename);
             free_symbol_table();

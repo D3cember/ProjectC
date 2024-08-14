@@ -6,6 +6,10 @@
 #include "headers/globaldefine.h"
 #include "headers/errors.h"
 
+
+LinkedListOfMacro *macroTable = NULL;
+
+
 int check_endmacr_format(const char *line)
 {
     const char *ptr = strstr(line, "endmacr");
@@ -44,31 +48,42 @@ NodeOnList *find_macro(LinkedListOfMacro *macroTable, const char *name)
 
 void process_file(char *as, char *am)
 {
+    int lineC;
     FILE *inputFile , *outputFile;
     char in_macro = 0;
     char line[MAX_LINE_LENGTH];
-    LinkedListOfMacro *macroTable = (LinkedListOfMacro *)handle_malloc(sizeof(LinkedListOfMacro));
+    location *amFile = NULL;
     NodeOnList *currentMacro = NULL;
-    macroTable->head = NULL;
-    macroTable->tail = NULL;
+    
+    /* Initialize macroTable if not already done */
+    if (macroTable == NULL) {
+        macroTable = (LinkedListOfMacro *)handle_malloc(sizeof(LinkedListOfMacro));
+        macroTable->head = NULL;
+        macroTable->tail = NULL;
+    }
+
+    lineC = 0;
+    amFile = (location *)handle_malloc(sizeof(struct location));
+    if (amFile == NULL) {
+        print_internal_error(ERROR_CODE_1);
+        free(amFile);
+        return;
+    }
+
     inputFile = fopen(as,"r");
     outputFile = fopen(am,"wb");
-
+    amFile->file_name = as;
     if (!as || !am)
     {
-        print_internal_error(ERROR_CODE_4);
+        print_external_error(4,*amFile);
         exit(EXIT_FAILURE);
     }
 
-    if (!macroTable)
-    {
-        print_internal_error(ERROR_CODE_1);
-        exit(EXIT_FAILURE);
-    }
-
-    while (fgets(line, MAX_LINE_LENGTH, inputFile) != NULL)
-    {
+    while (fgets(line, MAX_LINE_LENGTH, inputFile) != NULL){
         char *identifier = Macro_name(line);
+        lineC++;
+        amFile->line_num = lineC;
+
         /*--------- CASE 1: End of macro decleration ----------*/
         if (strstr(line, "endmacr") != NULL)
         { /*CASE 1: End of macro decleration*/
@@ -121,7 +136,7 @@ void process_file(char *as, char *am)
             }
         }
     }
-    free_linked_list(macroTable);
+    /*free_linked_list(macroTable);*/
     fclose(inputFile);
     fclose(outputFile);
 }

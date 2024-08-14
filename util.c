@@ -101,6 +101,27 @@ int check_macro_declaration_format(const char *line) {
     return 1;
 }
 
+char *format_operands(char *operand_str) {
+    static char formatted_operands[256];
+    char *src = operand_str;
+    char *dst = formatted_operands;
+
+    while (*src) {
+        if (!isspace(*src) && *src != ',') {
+            *dst++ = *src;
+        } else if (*src == ',') {
+            /* Add comma and skip spaces after it */
+            *dst++ = ',';
+            while (isspace(*(++src))) {}
+            src--;  /* Adjust for the increment in the while loop */
+        }
+        src++;
+    }
+    *dst = '\0';  /* Null-terminate the formatted string */
+
+    return formatted_operands;
+}
+
 
 
 
