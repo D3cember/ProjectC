@@ -12,6 +12,7 @@ int main(int argc , char *argv[]) {
     char fileName[30];
     char fileNameAss[30];
     char fileNameAm[30];
+    int error_detect = 0;
     if (argc <= 1)
     {
         print_internal_error(ERROR_CODE_12);
@@ -34,7 +35,12 @@ int main(int argc , char *argv[]) {
             process_file(fileNameAss,fileNameAm);
             printf("\n\n");
             printf("----- Starting First Pass ------\n");
-             first_pass(fileNameAm);
+            first_pass(fileNameAm);
+            if (error_detect != 0)
+            {
+                print_internal_error(ERROR_CODE_21);
+                continue;
+            }
             /* ------ FOR TESTING --------   */
             print_symbol_table(symbol_table_filename);
             free_symbol_table();

@@ -39,6 +39,8 @@ typedef enum ERROR_CODES {
     ERROR_CODE_17,
     ERROR_CODE_18,
     ERROR_CODE_19,
+    ERROR_CODE_20,
+    ERROR_CODE_21,
     /* Enumeration skip for future macro related errors */
 
     /* The following errors are related to reading command assembly lines */

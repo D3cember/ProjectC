@@ -122,6 +122,28 @@ char *format_operands(char *operand_str) {
     return formatted_operands;
 }
 
+int get_operand_type(const char *operand) {
+    /* Check for immediate addressing */
+    if (operand[0] == '#') {
+        return 0;  /* Immediate addressing */
+    }
+    /* Check for register direct addressing (r0-r7) */
+    else if (operand[0] == 'r' && strlen(operand) == 2 && isdigit(operand[1]) && operand[1] >= '0' && operand[1] <= '7') {
+        return 3;  /* Register direct addressing */
+    }
+    /* Check for indirect addressing (e.g., *r0) */
+    else if (operand[0] == '*' && operand[1] == 'r' && strlen(operand) == 3 && isdigit(operand[2]) && operand[2] >= '0' && operand[2] <= '7') {
+        return 2;  /* Indirect addressing through register */
+    }
+    /* Check for direct addressing (labels or variable names) */
+    else if (isalpha(operand[0])) {
+        return 1;  /* Direct addressing */
+    }
+    /* If none of the above, return invalid type */
+    return -1;  /* Invalid operand type */
+}
+
+
 
 
 

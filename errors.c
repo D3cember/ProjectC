@@ -29,7 +29,9 @@ Error errors[] = {
         {ERROR_CODE_16," - FIRST_PASS - :Label name is invaild."},
         {ERROR_CODE_17," - FIRST_PASS - :Label name is already saved."},
         {ERROR_CODE_18,"Given operands exceeds the limit"},
-        {ERROR_CODE_19,"Label name is not valid."}
+        {ERROR_CODE_19,"Label name is not valid."},
+        {ERROR_CODE_20,"File contain erros , cannot procced"},
+        {ERROR_CODE_21,"Error found on first stage according to instruction cannot procced the second stage, moveing to the next file."},
 
 };
 

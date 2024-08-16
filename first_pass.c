@@ -9,6 +9,7 @@
 #include "headers/globaldefine.h"
 #include "headers/util.h"
 
+int error_detect = 0;
 
 int count_data_items(const char *data) {
     int count = 1;
@@ -34,7 +35,7 @@ int instructionCheck(const char *word) {
 
 void first_pass(char *filename) {
     FILE *file;
-    char line[256];
+    char line[MAX_LINE_LENGTH];
     int IC = IC_START, DC = DC_START;
     char *label = NULL;
     char *instruction = NULL;
@@ -61,19 +62,24 @@ void first_pass(char *filename) {
     }
 
     /* Loop through each line in the file */
-    while (fgets(line, sizeof(line), file)) {
+    while (fgets(line, MAX_LINE_LENGTH, file)) {
+        char *line_start;  /* Declare line_start at the beginning of the block */
+        char *line_end;    /* Declare line_end at the beginning of the block */
+        char *colon_position;  /* Declare colon_position at the beginning of the block */
+
         lineC++;  /* Increment the line counter */
         amFile->file_name = filename;  /* Set the filename in the location structure */
         amFile->line_num = lineC;  /* Set the line number in the location structure */
 
         /* Trim leading and trailing whitespace */
-        char *p = line;
-        while (*p == ' ' || *p == '\t') p++;  /* Skip leading spaces or tabs */
-        char *end = p + strlen(p) - 1;
-        while (end > p && (*end == ' ' || *end == '\t' || *end == '\n')) end--;  /* Skip trailing spaces, tabs, or newlines */
-        *(end + 1) = '\0';  /* Null-terminate the trimmed string */
+        line_start = line;  /* line_start points to the beginning of the line */
+        line_end = line_start + strlen(line_start) - 1;  /* line_end points to the last character */
 
-        if (*p == '\0' || *p == ';') {
+        while (*line_start == ' ' || *line_start == '\t') line_start++;  /* Skip leading spaces or tabs */
+        while (line_end > line_start && (*line_end == ' ' || *line_end == '\t' || *line_end == '\n')) line_end--;  /* Skip trailing spaces, tabs, or newlines */
+        *(line_end + 1) = '\0';  /* Null-terminate the trimmed string */
+
+        if (*line_start == '\0' || *line_start == ';') {
             continue;  /* Skip empty lines or comments */
         }
 
@@ -83,10 +89,10 @@ void first_pass(char *filename) {
         operand = NULL;
 
         /* Check for label by looking for a colon */
-        char *colon_pos = strchr(p, ':');
-        if (colon_pos) {
-            *colon_pos = '\0';  /* Split the string at the colon */
-            label = p;  /* The part before the colon is the label */
+        colon_position = strchr(line_start, ':');
+        if (colon_position) {
+            *colon_position = '\0';  /* Split the string at the colon */
+            label = line_start;  /* The part before the colon is the label */
 
             /* Validate the label */
             if (!is_valid_label(label)) {
@@ -97,33 +103,33 @@ void first_pass(char *filename) {
             }
 
             /* Move to the part after the colon and remove leading whitespace */
-            p = colon_pos + 1;
-            while (*p == ' ' || *p == '\t') {
-                p++;
+            line_start = colon_position + 1;
+            while (*line_start == ' ' || *line_start == '\t') {
+                line_start++;
             }
         } else if (line[0] != ' ') {
             /* If no colon is found and the line doesn't start with a space, treat the first word as a potential label */
-            label = strtok(p, " \t");
+            label = strtok(line_start, " \t");
             amFile->col = label;  /* Set the label as the column in the location structure */
             print_external_error(19, *amFile);  /* Error: Missing colon in label */
             errC++;  /* Increment error count */
             continue;  /* Skip this line and move to the next one */
         }
 
-        if (*p != '\0') {
+        if (*line_start != '\0') {
             /* Manually parse the instruction */
-            instruction = p;
-            while (*p != ' ' && *p != '\t' && *p != '\0') {
-                p++;  /* Move to the end of the instruction */
+            instruction = line_start;
+            while (*line_start != ' ' && *line_start != '\t' && *line_start != '\0') {
+                line_start++;  /* Move to the end of the instruction */
             }
 
-            if (*p != '\0') {
-                *p = '\0';  /* Null-terminate the instruction */
-                p++;  /* Move to the operand part */
-                while (*p == ' ' || *p == '\t') {
-                    p++;  /* Skip leading spaces or tabs in the operand */
+            if (*line_start != '\0') {
+                *line_start = '\0';  /* Null-terminate the instruction */
+                line_start++;  /* Move to the operand part */
+                while (*line_start == ' ' || *line_start == '\t') {
+                    line_start++;  /* Skip leading spaces or tabs in the operand */
                 }
-                operand = format_operands(p);  /* Format the operands */
+                operand = format_operands(line_start);  /* Set operand to the rest of the line */
             }
         }
 
@@ -156,11 +162,11 @@ void first_pass(char *filename) {
                 if (instruction && instructionCheck(instruction)) {
                     int instr_len = instructionLength(instruction, operand);
                     if (instr_len == -1) {
+                        amFile->col = instruction;
                         print_external_error(18, *amFile);  /* Error: Invalid instruction length */
                         errC++;  /* Increment error count */
                         continue;  /* Skip further processing */
                     }
-
                     /* Only add the symbol if the instruction length is valid */
                     if (label) {
                         add_symbol(label, IC, 0);  /* Add the symbol for the instruction */
@@ -177,10 +183,17 @@ void first_pass(char *filename) {
             }
         }
     }
+    if (errC == 0) {
+        adjust_data_symbols(IC);
+    }
+    else if (errC > 0){
+        error_detect = errC;
+        print_external_error(20,*amFile);
+        return;
+    }
+        free(macroTable);
 
-    /* Close the file and adjust data symbols */
     fclose(file);
-    adjust_data_symbols(IC);
 }
 
 
@@ -263,35 +276,61 @@ int instructionLength(const char *instruction, const char *operand) {
     int length = 1;  
     char *op;
     int operand_count = 0;
+    int operand_types[2];  /* Supporting up to 2 operands */
 
+    /* Tokenize and count operands, and get their types */
     op = strtok((char *)operand, ", ");
-    while (op != NULL) {
+    while (op != NULL && operand_count < 2) {
+        operand_types[operand_count] = get_operand_type(op);
+        if (operand_types[operand_count] == -1) {
+            return -1;  /* Invalid operand type */
+        }
         operand_count++;
         op = strtok(NULL, ", ");
     }
 
-    if (strcmp(instruction, "mov") == 0 || strcmp(instruction, "cmp") == 0 || strcmp(instruction, "add") == 0 ||
-        strcmp(instruction, "sub") == 0 || strcmp(instruction, "lea") == 0) {
-        if (operand_count > 2) {
-            return -1;  
+    /* Validate the number of operands and their types for each instruction */
+    if (strcmp(instruction, "mov") == 0 || strcmp(instruction, "cmp") == 0 || 
+        strcmp(instruction, "add") == 0 || strcmp(instruction, "sub") == 0) {
+
+        if (operand_count != 2) {
+            return -1;  /* Must have exactly 2 operands */
+        }
+        /* In `mov`, `add`, and `sub`, destination can't be immediate (type 0), 
+           but `cmp` allows immediate values for both source and destination. */
+        if ((strcmp(instruction, "mov") == 0 || strcmp(instruction, "add") == 0 || strcmp(instruction, "sub") == 0) && operand_types[1] == 0) {
+            return -1;  /* Destination can't be immediate for these instructions */
         }
         length += 2;
 
-    } else if (strcmp(instruction, "clr") == 0 || strcmp(instruction, "not") == 0 || strcmp(instruction, "inc") == 0 ||
-               strcmp(instruction, "dec") == 0 || strcmp(instruction, "jmp") == 0 || strcmp(instruction, "bne") == 0 ||
-               strcmp(instruction, "jsr") == 0 || strcmp(instruction, "red") == 0 || strcmp(instruction, "prn") == 0) {
-        if (operand_count > 1) {
-            return -1;  
+    } else if (strcmp(instruction, "lea") == 0) {
+        if (operand_count != 2 || operand_types[0] != 1 || operand_types[1] == 0) {
+            return -1;  /* LEA requires direct for source and not immediate for destination */
         }
+        length += 2;
+
+    } else if (strcmp(instruction, "clr") == 0 || strcmp(instruction, "not") == 0 || 
+               strcmp(instruction, "inc") == 0 || strcmp(instruction, "dec") == 0 ||
+               strcmp(instruction, "jmp") == 0 || strcmp(instruction, "bne") == 0 || 
+               strcmp(instruction, "jsr") == 0 || strcmp(instruction, "red") == 0 || 
+               strcmp(instruction, "prn") == 0) {
+
+        if (operand_count != 1) {
+            return -1;
+        }
+        /* Validate operand type here according to specific rules for each instruction */
         length += 1;
 
     } else if (strcmp(instruction, "rts") == 0 || strcmp(instruction, "stop") == 0) {
         if (operand_count != 0) {
-            return -1;  
+            return -1;
         }
     }
+
     return length;
 }
+
+
 
 
 int is_reserved_keyword(const char *label) {
@@ -325,34 +364,35 @@ void handle_extern(const char *label) {
 
 int is_valid_label(const char *label) {
     int i;
+    int len;
+    char temp_label[MAX_LABEL_LENGTH];
+    NodeOnList *current;
 
-    // Ensure the label ends with a colon
-    int len = strlen(label);
+    len = strlen(label);
 
-    // Check if the first character is a letter
+    /* Check if the first character is a letter */
     if (!isalpha(label[0])) {
         return 0;
     }
 
-    // Check each character in the label (except the last one, which is the colon)
+    /* Check each character in the label (except the last one, which is the colon) */
     for (i = 1; i < len; i++) {
         if (!isalnum(label[i])) {
             return 0;
         }
     }
 
-    // Remove the colon for reserved keyword check
-    char temp_label[MAX_LABEL_LENGTH];
+    /* Remove the colon for reserved keyword check */
     strncpy(temp_label, label, len - 1);
-    temp_label[len - 1] = '\0'; // Null-terminate the label without the colon
+    temp_label[len - 1] = '\0'; /* Null-terminate the label without the colon */
 
-    // Check if it's a reserved keyword
+    /* Check if it's a reserved keyword */
     if (is_reserved_keyword(temp_label)) {
         return 0;
     }
 
-    // Check if it's a macro name
-    NodeOnList *current = macroTable->head;
+    /* Check if it's a macro name */
+    current = macroTable->head;
     while (current != NULL) {
         if (strcmp(current->name, temp_label) == 0) {
             return 0;
@@ -360,7 +400,7 @@ int is_valid_label(const char *label) {
         current = current->next;
     }
 
-    return 1; // The label is valid
+    return 1; /* The label is valid */
 }
 
 
