@@ -143,6 +143,119 @@ int get_operand_type(const char *operand) {
     return -1;  /* Invalid operand type */
 }
 
+void analyze_line(char *line, char **label, char **instruction, char **operand, location *amFile, int *errC) {
+    char *line_start;
+    char *line_end;
+    char *colon_position;
+
+    /* Trim leading and trailing whitespace */
+    line_start = line;  /* line_start points to the beginning of the line */
+    line_end = line_start + strlen(line_start) - 1;  /* line_end points to the last character */
+
+    while (*line_start == ' ' || *line_start == '\t') line_start++;  /* Skip leading spaces or tabs */
+    while (line_end > line_start && (*line_end == ' ' || *line_end == '\t' || *line_end == '\n')) line_end--;  /* Skip trailing spaces, tabs, or newlines */
+    *(line_end + 1) = '\0';  /* Null-terminate the trimmed string */
+
+    if (*line_start == '\0' || *line_start == ';') {
+        return;  /* Skip empty lines or comments */
+    }
+
+    /* Initialize pointers for label, instruction, and operand */
+    *label = NULL;
+    *instruction = NULL;
+    *operand = NULL;
+
+    /* Check for label by looking for a colon */
+    colon_position = strchr(line_start, ':');
+    if (colon_position) {
+        *colon_position = '\0';  /* Split the string at the colon */
+        *label = line_start;  /* The part before the colon is the label */
+
+        /* Validate the label */
+        if (!is_valid_label(*label)) {
+            amFile->colo = *label;  /* Set the label as the column in the location structure */
+            print_external_error(19, *amFile);  /* Invalid label */
+            (*errC)++;  /* Increment error count */
+            return;  /* Skip further processing if label is invalid */
+        }
+
+        /* Move to the part after the colon and remove leading whitespace */
+        line_start = colon_position + 1;
+        while (*line_start == ' ' || *line_start == '\t') {
+            line_start++;
+        }
+    } else if (line[0] != ' ') {
+        /* If no colon is found and the line doesn't start with a space, treat the first word as a potential label */
+        *label = strtok(line_start, " \t");
+        amFile->colo = *label;  /* Set the label as the column in the location structure */
+        print_external_error(19, *amFile);  /* Error: Missing colon in label */
+        (*errC)++;  /* Increment error count */
+        return;  /* Skip this line and move to the next one */
+    }
+
+    if (*line_start != '\0') {
+        /* Manually parse the instruction */
+        *instruction = line_start;
+        while (*line_start != ' ' && *line_start != '\t' && *line_start != '\0') {
+            line_start++;  /* Move to the end of the instruction */
+        }
+
+        if (*line_start != '\0') {
+            *line_start = '\0';  /* Null-terminate the instruction */
+            line_start++;  /* Move to the operand part */
+            while (*line_start == ' ' || *line_start == '\t') {
+                line_start++;  /* Skip leading spaces or tabs in the operand */
+            }
+            *operand = format_operands(line_start);  /* Set operand to the rest of the line */
+        }
+    }
+}
+InstructionMap instruction_map[] = {
+    {"mov", MOV, 0},
+    {"cmp", CMP, 1},
+    {"add", ADD, 2},
+    {"sub", SUB, 3},
+    {"lea", LEA, 4},
+    {"clr", CLR, 5},
+    {"not", NOT, 6},
+    {"inc", INC, 7},
+    {"dec", DEC, 8},
+    {"jmp", JMP, 9},
+    {"bne", BNE, 10},
+    {"jsr", JSR, 13},
+    {"red", RED, 11},
+    {"prn", PRN, 12},
+    {"rts", RTS, 14},
+    {"stop", STOP, 15}
+};
+
+InstructionType get_instruction_type(const char *instruction) {
+    int i;
+    for (i = 0; i < INSTRUCTION_COUNT; i++) {
+        if (strcmp(instruction, instruction_map[i].name) == 0) {
+            return instruction_map[i].type;
+        }
+    }
+    return UNKNOWN;
+}
+
+int get_opcode(const char *instruction) {
+    int i;
+    for (i = 0; i < INSTRUCTION_COUNT; i++) {
+        if (strcmp(instruction, instruction_map[i].name) == 0) {
+            return instruction_map[i].opcode;
+        }
+    }
+    return -1;  /* Invalid instruction */
+}
+
+
+
+
+
+
+
+
 
 
 

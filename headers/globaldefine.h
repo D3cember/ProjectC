@@ -1,6 +1,6 @@
 
-#ifndef PROJECTC_GLOBALDEFINE_H
-#define PROJECTC_GLOBALDEFINE_H
+#ifndef GLOBALDEFINE_H
+#define GLOBALDEFINE_H
 
 #include "data_struct.h"
 #include "first_pass.h"
@@ -25,6 +25,10 @@
 #define AM_FILE ".am"
 
 #define MAX_LABEL_LENGTH 31
+
+#define INSTRUCTION_COUNT 15
+
+#define MAX_BINARY_LENGTH 16
 
 
 

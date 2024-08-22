@@ -47,29 +47,5 @@ int main(int argc , char *argv[]) {
 
 
         }
-        
-        /*
-        const char *input_filename = "input.asm";
-        const char *output_filename = "output.asm";
-        
-        FILE *input_file = fopen(input_filename, "r");
-        FILE *output_file = fopen(output_filename, "w");
-        if (!input_file || !output_file) {
-            perror("Error opening file");
-            return EXIT_FAILURE;
-        }
-        printf("----- Starting Pre Processor stage ------\n");
-        process_file(input_file, output_file);
-        fclose(input_file);
-        fclose(output_file);
-        printf("----- Starting First Pass ------\n");
-        first_pass(output_filename);
-
-        print_symbol_table(symbol_table_filename);
-
-        free_symbol_table();
-
-        return 0;
-        */
     }
 }

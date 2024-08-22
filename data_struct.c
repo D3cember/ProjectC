@@ -81,41 +81,80 @@ void *handle_malloc(size_t size) {
 }
 Symbol *symbol_table = NULL;
 
-int add_symbol(const char *name, int address, int is_external) {
+int add_symbol(const char *label, int address, int is_external) {
     Symbol *new_symbol;
     Symbol *current;
-    char *name_copy;
+    char *label_copy = NULL;
 
     current = symbol_table;
+
+    /* בדיקת כפילות תווית */
     while (current != NULL) {
-        if (strcmp(current->name, name) == 0) {
+        if (label && current->label && strcmp(current->label, label) == 0) {
             return 0; /* תווית קיימת */
         }
         current = current->next;
     }
 
+    /* הקצאת זיכרון ל-symbol החדש */
     new_symbol = (Symbol *)malloc(sizeof(Symbol));
     if (new_symbol == NULL) {
         print_internal_error(ERROR_CODE_1);
         exit(EXIT_FAILURE);
     }
 
-    name_copy = (char *)malloc(strlen(name) + 1);
-    if (name_copy == NULL) {
-        print_internal_error(ERROR_CODE_1);
-        exit(EXIT_FAILURE);
+    /* העתקת מחרוזת התווית והקצאת זיכרון */
+    if (label) {
+        label_copy = (char *)malloc(strlen(label) + 1);
+        if (label_copy == NULL) {
+            print_internal_error(ERROR_CODE_1);
+            exit(EXIT_FAILURE);
+        }
+        strcpy(label_copy, label);
     }
-    strcpy(name_copy, name);
 
-    new_symbol->name = name_copy;
+    /* שמירת הערכים ב-symbol החדש */
+    new_symbol->label = label_copy;
     new_symbol->address = address;
     new_symbol->is_external = is_external;
     new_symbol->next = symbol_table;
+
+    /* עדכון ראש הרשימה המקושרת */
     symbol_table = new_symbol;
 
-    printf("Symbol added: %s with address %d, external: %d\n", name, address, is_external);
     return 1;
 }
+
+/*CodeNode *code_list = NULL;  Main list */
+
+/*void add_code_node(int address, unsigned short binary_code) {
+    CodeNode *new_node = (CodeNode *)malloc(sizeof(CodeNode));
+    CodeNode *current;
+
+    if (!new_node) {
+        print_internal_error(ERROR_CODE_3); // טיפול בשגיאת זיכרון
+        return;
+    }
+
+    new_node->address = address;
+    new_node->binary_code = binary_code;
+    new_node->next = NULL;
+
+    if (code_list == NULL) {
+        code_list = new_node;
+    } else {
+        current = code_list;
+        while (current->next != NULL) {
+            current = current->next;
+        }
+        current->next = new_node;
+    }
+}*/
+
+
+
+
+
 
   
 
@@ -133,7 +172,7 @@ void print_symbol_table(const char *filename) {
 
     current = symbol_table;
     while (current) {
-        fprintf(file, "%s\t%d\n", current->name, current->address);
+        fprintf(file, "%s\t%d\n", current->label, current->address);
         current = current->next;
     }
 
@@ -145,12 +184,11 @@ void free_symbol_table(void) {
     while (current) {
         Symbol *to_free = current;
         current = current->next;
-        free(to_free->name); 
+        free(to_free->label); 
         free(to_free);
     }
     symbol_table = NULL;
 }
 /*------------------- TEST ----------------------- */
-
 
 

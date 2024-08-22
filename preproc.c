@@ -63,7 +63,7 @@ void process_file(char *as, char *am)
     }
 
     lineC = 0;
-    amFile = (location *)handle_malloc(sizeof(struct location));
+    amFile = (location *)handle_malloc(sizeof(location));
     if (amFile == NULL) {
         print_internal_error(ERROR_CODE_1);
         free(amFile);
@@ -75,7 +75,7 @@ void process_file(char *as, char *am)
     amFile->file_name = as;
     if (!as || !am)
     {
-        print_external_error(4,*amFile);
+        print_internal_error(ERROR_CODE_2);
         exit(EXIT_FAILURE);
     }
 
@@ -91,8 +91,9 @@ void process_file(char *as, char *am)
             { /*if inside of macro decleration and arrive "endmacr" line.*/
                 if (!check_endmacr_format(line))
                 {
-                    print_internal_error(ERROR_CODE_5);
-                    exit(EXIT_FAILURE);
+                    print_internal_error(ERROR_CODE_10);
+                    print_internal_error(ERROR_CODE_29);
+                    return;
                 }
                 in_macro = 0;
                 currentMacro = NULL; /*End of macro, reset currentMacro*/
@@ -122,8 +123,9 @@ void process_file(char *as, char *am)
             }
             else if (strstr(line, "macr") != NULL){ /*CASE 4: Start of macro decleration.*/
                 if (!check_macro_declaration_format(line)) {
-                    print_internal_error(ERROR_CODE_6);
-                    exit(EXIT_FAILURE);
+                    print_internal_error(ERROR_CODE_9);
+                    print_internal_error(ERROR_CODE_29);
+                    return;
                 }
                 addNode(macroTable, line);
                 in_macro = 1;

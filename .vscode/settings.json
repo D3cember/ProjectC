@@ -1,15 +1,23 @@
 {
     "files.associations": {
+        "globaldefine.h": "c",
         "preproc.h": "c",
         "data_struct.h": "c",
-        "globaldefine.h": "c",
         "first_pass.h": "c",
+        "second_pass.h": "c",
         "util.h": "c",
         "errors.h": "c",
         "stdio.h": "c",
         "__locale": "c",
         "cctype": "c",
-        "locale": "c"
+        "locale": "c",
+        "__config": "c",
+        "bitset": "c",
+        "new": "c",
+        "ostream": "c",
+        "string": "c",
+        "string_view": "c",
+        "tuple": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "makefile.configureOnOpen": false

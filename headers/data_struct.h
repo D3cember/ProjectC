@@ -2,7 +2,6 @@
 #define DATA_STRUCT_H
 
 #include "globaldefine.h"
-#include "errors.h"
 
 typedef struct NodeOfMacroContentList {
     char line[MAX_LINE_LENGTH];
@@ -26,19 +25,8 @@ typedef struct LinkedListOfMacro{
 } LinkedListOfMacro;
 
 
-/*struct location{
-    char file;
-    int line;
-    int column;
-};*/
-struct location {
-    char *file_name;
-    int line_num;
-    char *col;
-};
-
-typedef struct Symbol{
-    char *name;
+typedef struct Symbol {
+    char *label;
     int address;
     int is_external;
     struct Symbol *next;
@@ -51,7 +39,7 @@ void add_macro_content(NodeOnList *macro, char *line);
 void free_macro_content_list(LinkedListOfMacro_Content *macroTabble);
 void free_linked_list(LinkedListOfMacro *list);
 void *handle_malloc(size_t size);
-int add_symbol(const char *name, int address, int is_external);
+int add_symbol(const char *label, int address, int is_external);
 void print_symbol_table(const char *filename);
 void free_symbol_table(void);
 
@@ -59,5 +47,3 @@ void free_symbol_table(void);
 
 
 #endif 
-
-
