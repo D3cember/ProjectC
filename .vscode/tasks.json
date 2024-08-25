@@ -7,7 +7,7 @@
             "command": "sh",
             "args": [
                 "-c",
-                "gcc -fdiagnostics-color=always -g -o /Users/december/Desktop/ProjectC/projectc -ansi -Wall -pedantic -std=c90 /Users/december/Desktop/ProjectC/*.c -I /Users/december/Desktop/ProjectC/headers"
+                "gcc -fdiagnostics-color=always -g -o /Users/december/Desktop/ProjectC/projectc -ansi -Wall -pedantic -std=c90 /Users/december/Desktop/ProjectC/source/*.c -I /Users/december/Desktop/ProjectC/headers"
             ],
             "options": {
                 "cwd": "/Users/december/Desktop/ProjectC" // Ensuring the correct working directory

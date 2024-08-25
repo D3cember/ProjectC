@@ -5,7 +5,10 @@
 #include "errors.h"
 #include "first_pass.h"
 
-void second_pass(const char *filename ,Symbol *symbol_table);
+void add_to_ent_file(const char *filename, const char *label, int address);
+void second_pass(char *filename,char *fileNameAm);
+void free_code_list(CodeNode *head);
+
 
 #endif /*SECOND_PASS_H*/
 

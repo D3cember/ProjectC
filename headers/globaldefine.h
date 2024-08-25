@@ -2,9 +2,8 @@
 #ifndef GLOBALDEFINE_H
 #define GLOBALDEFINE_H
 
-#include "data_struct.h"
-#include "first_pass.h"
 
+#define MAX_BINARY_LENGTH 16
 
 #define MAX_LINE_LENGTH 80
 
@@ -23,6 +22,12 @@
 #define AS_FILE ".as"
 
 #define AM_FILE ".am"
+
+#define EXT_FILE ".ext"
+
+#define OB_FILE ".ob"
+
+#define ENT_FILE ".ent"
 
 #define MAX_LABEL_LENGTH 31
 

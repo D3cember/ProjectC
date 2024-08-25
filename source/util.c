@@ -4,8 +4,10 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-#include "headers/util.h"
-#include "headers/errors.h"
+#include "../headers/util.h"
+#include "../headers/errors.h"
+#include "../headers/first_pass.h"
+#include "../headers/second_pass.h"
 
 
 const char *reserved_keywords[MAX_KEYWORDS] = {"mov","cmp","add","sub","lea","clr","not","inc","dec","jmp","bne","red","prn","jsr","rts","stop",".data",".string",".entry",".extern","r0","r1","r2","r3","r4","r5","r6","r7","macr","endmacr"};
@@ -151,12 +153,14 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
     char *colon_position;
 
     /* Trim leading and trailing whitespace */
-    line_start = line;  /* line_start points to the beginning of the line */
-    line_end = line_start + strlen(line_start) - 1;  /* line_end points to the last character */
+    line_start = line;
+    line_end = line_start + strlen(line_start) - 1;
 
-    while (*line_start == ' ' || *line_start == '\t') line_start++;  /* Skip leading spaces or tabs */
-    while (line_end > line_start && (*line_end == ' ' || *line_end == '\t' || *line_end == '\n')) line_end--;  /* Skip trailing spaces, tabs, or newlines */
-    *(line_end + 1) = '\0';  /* Null-terminate the trimmed string */
+    /* Skip leading spaces or tabs */
+    while (*line_start == ' ' || *line_start == '\t') line_start++;
+    /* Skip trailing spaces, tabs, or newlines */
+    while (line_end > line_start && (*line_end == ' ' || *line_end == '\t' || *line_end == '\n')) line_end--;
+    *(line_end + 1) = '\0';
 
     if (*line_start == '\0' || *line_start == ';') {
         return;  /* Skip empty lines or comments */
@@ -167,30 +171,6 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
     *instruction = NULL;
     *operand = NULL;
 
-    /* Check if the line starts with a dot (.) */
-    if (*line_start == '.') {
-        *instruction = strtok(line_start, " \t");
-        *operand = strtok(NULL, " \t");
-
-        if (strcmp(*instruction, ".entry") == 0) {
-            if (*operand != NULL && is_valid_label(*operand)) {
-                handle_entry(*operand);  /* Handle .entry directive */
-            } else {
-                print_external_error(20, *amFile);  /* Invalid or missing operand for .entry */
-                (*errC)++;  /* Increment error count */
-            }
-            return;  /* Exit after handling .entry */
-        } else if (strcmp(*instruction, ".extern") == 0) {
-            if (*operand != NULL && is_valid_label(*operand)) {
-                handle_extern(*operand);  /* Handle .extern directive */
-            } else {
-                print_external_error(21, *amFile);  /* Invalid or missing operand for .extern */
-                (*errC)++;  /* Increment error count */
-            }
-            return;  /* Exit after handling .extern */
-        }
-    }
-
     /* Check for label by looking for a colon */
     colon_position = strchr(line_start, ':');
     if (colon_position) {
@@ -199,10 +179,10 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
 
         /* Validate the label */
         if (!is_valid_label(*label)) {
-            amFile->colo = *label;  /* Set the label as the column in the location structure */
+            amFile->colo = *label;
             print_external_error(19, *amFile);  /* Invalid label */
-            (*errC)++;  /* Increment error count */
-            return;  /* Skip further processing if label is invalid */
+            (*errC)++;
+            return;
         }
 
         /* Move to the part after the colon and remove leading whitespace */
@@ -210,29 +190,31 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
         while (*line_start == ' ' || *line_start == '\t') {
             line_start++;
         }
-    } else if (line[0] != ' ') {
-        /* If no colon is found and the line doesn't start with a space, treat the first word as a potential label */
-        *label = strtok(line_start, " \t");
-        amFile->colo = *label;  /* Set the label as the column in the location structure */
-        print_external_error(19, *amFile);  /* Error: Missing colon in label */
-        (*errC)++;  /* Increment error count */
-        return;  /* Skip this line and move to the next one */
     }
 
     if (*line_start != '\0') {
-        /* Manually parse the instruction */
+        /* Parse the instruction */
         *instruction = line_start;
         while (*line_start != ' ' && *line_start != '\t' && *line_start != '\0') {
-            line_start++;  /* Move to the end of the instruction */
+            line_start++;
         }
 
         if (*line_start != '\0') {
             *line_start = '\0';  /* Null-terminate the instruction */
-            line_start++;  /* Move to the operand part */
+            line_start++;
+            /* Skip leading spaces or tabs in the operand */
             while (*line_start == ' ' || *line_start == '\t') {
-                line_start++;  /* Skip leading spaces or tabs in the operand */
+                line_start++;
             }
-            *operand = format_operands(line_start);  /* Set operand to the rest of the line */
+            *operand = line_start;  /* Set operand to the rest of the line */
+        }
+
+        /* Handle special instructions like .entry and .extern */
+        if (strcmp(*instruction, ".entry") == 0 || strcmp(*instruction, ".extern") == 0) {
+            if (*operand == NULL || !is_valid_label(*operand)) {
+                print_external_error(strcmp(*instruction, ".entry") == 0 ? 20 : 21, *amFile);  /* Invalid or missing operand */
+                (*errC)++;
+            }
         }
     }
 }
@@ -334,11 +316,24 @@ void create_ent_file(const char *base_filename, Symbol *symbol_table) {
     char *ent_filename;
     FILE *ent_file;
     Symbol *sym;
+    int has_entries = 0;
+
+    /*בדוק אם יש תוויות עם is_entry = 1*/
+    sym = symbol_table;
+    while (sym != NULL) {
+        if (sym->is_entry) {
+            has_entries = 1;
+            break;
+        }
+        sym = sym->next;
+    }
+
+    if (!has_entries) return; /* אם אין תוויות, אין צורך ליצור את הקובץ */
 
     /* יצירת שם הקובץ עם סיומת .ent */
-    ent_filename = (char *)malloc(strlen(base_filename) + 5);  /* 4 תווים עבור ".ent" ועוד אחד ל-null terminator */
+    ent_filename = (char *)malloc(strlen(base_filename) + 5); /* 4 תווים עבור ".ent" ועוד אחד ל-null terminator */
     if (!ent_filename) {
-        print_internal_error(ERROR_CODE_1);  /* Error allocating memory */
+        print_internal_error(ERROR_CODE_1); /* Error allocating memory */
         return;
     }
     strcpy(ent_filename, base_filename);
@@ -346,7 +341,7 @@ void create_ent_file(const char *base_filename, Symbol *symbol_table) {
 
     ent_file = fopen(ent_filename, "w");
     if (!ent_file) {
-        print_internal_error(ERROR_CODE_2);  /* Error opening file */
+        print_internal_error(ERROR_CODE_2); /* Error opening file */
         free(ent_filename);
         return;
     }
@@ -354,7 +349,7 @@ void create_ent_file(const char *base_filename, Symbol *symbol_table) {
     sym = symbol_table;
     while (sym != NULL) {
         if (sym->is_entry) {
-            fprintf(ent_file, "%s %d\n", sym->label, sym->address);
+            fprintf(ent_file, "%s %04d\n", sym->label, sym->address);
         }
         sym = sym->next;
     }
@@ -396,6 +391,57 @@ void create_ext_file(const char *base_filename, Symbol *symbol_table) {
     fclose(ext_file);
     free(ext_filename);
 }
+
+void create_ob_file(const char *filename, char binaryOutput[][MAX_BINARY_LENGTH], int IC, int DC) {
+    FILE *ob_file;
+    char *ob_filename;
+    int i;
+    ob_filename = NULL;
+    snprintf(ob_filename, sizeof(ob_filename), "%s.ob", filename);
+    ob_file = fopen(ob_filename, "w");
+    if (ob_file) {
+        fprintf(ob_file, "%04d %04d\n", IC, DC);  /* כתיבת כותרת עם ערכי IC ו-DC */
+        for (i = 0; i < IC; i++) {
+            fprintf(ob_file, "%04d %s\n", i + IC_START, binaryOutput[i]);  /* כתיבת קוד בינארי */
+        }
+        fclose(ob_file);
+    }
+}
+
+
+
+/* פונקציה להוספת ערכים לקובץ .ext */
+void add_to_ext_file(const char *filename, const char *label, int address) {
+    char *ext_filename;
+    FILE *ext_file;
+
+    /* יצירת שם הקובץ עם סיומת .ext */
+    ext_filename = (char *)malloc(strlen(filename) + 5); /* 4 תווים עבור ".ext" ועוד אחד ל-null terminator */
+    if (!ext_filename) {
+        print_internal_error(ERROR_CODE_1); /* שגיאה בהקצאת זיכרון */
+        return;
+    }
+    strcpy(ext_filename, filename);
+    strcat(ext_filename, ".ext");
+
+    ext_file = fopen(ext_filename, "a");  /* פתיחה במצב append, כך שניתן להוסיף ערכים נוספים */
+    if (!ext_file) {
+        print_internal_error(ERROR_CODE_2); /* שגיאה בפתיחת קובץ */
+        free(ext_filename);
+        return;
+    }
+
+    fprintf(ext_file, "%s %04d\n", label, address);
+
+    fclose(ext_file);
+    free(ext_filename);
+}
+
+
+
+
+
+
 
  
 

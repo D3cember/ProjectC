@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "headers/data_struct.h"
-#include "headers/util.h"
-#include "headers/errors.h"
+#include "../headers/data_struct.h"
+#include "../headers/util.h"
+#include "../headers/errors.h"
 
 
 void addNode(LinkedListOfMacro *macroTable , char *line) { /*createing node*/ 
@@ -82,50 +82,38 @@ void *handle_malloc(size_t size) {
 }
 Symbol *symbol_table = NULL;
 
-int add_symbol(const char *label, int address, int is_external, int is_entry){
-    Symbol *new_symbol;
-    Symbol *current;
-    char *label_copy = NULL;
-
-    current = symbol_table;
-
-    /* בדיקת כפילות תווית */
+int add_symbol(const char *label, int address, int is_external, int is_entry) {
+    Symbol *current = symbol_table;
+    
     while (current != NULL) {
         if (label && current->label && strcmp(current->label, label) == 0) {
+            // אם התווית כבר קיימת כ-external או entry, נעדכן רק את הכתובת
+            if (current->is_external || current->is_entry) {
+                current->address = address;
+                return 1; // תווית עודכנה בהצלחה
+            }
             return 0; /* תווית קיימת */
         }
         current = current->next;
     }
 
-    /* הקצאת זיכרון ל-symbol החדש */
-    new_symbol = (Symbol *)malloc(sizeof(Symbol));
-    if (new_symbol == NULL) {
-        print_internal_error(ERROR_CODE_1);
-        exit(EXIT_FAILURE);
+    // אם התווית לא קיימת, נוסיף אותה לטבלה
+    Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
+    if (!new_symbol) {
+        print_internal_error(ERROR_CODE_1); /* Error allocating memory */
+        return 0;
     }
 
-    /* העתקת מחרוזת התווית והקצאת זיכרון */
-    if (label) {
-        label_copy = (char *)malloc(strlen(label) + 1);
-        if (label_copy == NULL) {
-            print_internal_error(ERROR_CODE_1);
-            exit(EXIT_FAILURE);
-        }
-        strcpy(label_copy, label);
-    }
-
-    /* שמירת הערכים ב-symbol החדש */
-    new_symbol->label = label_copy;
+    new_symbol->label = strdup(label);
     new_symbol->address = address;
     new_symbol->is_external = is_external;
     new_symbol->is_entry = is_entry;
     new_symbol->next = symbol_table;
-
-    /* עדכון ראש הרשימה המקושרת */
     symbol_table = new_symbol;
 
-    return 1;
+    return 1; /* תווית נוספה בהצלחה */
 }
+
 
 
 CodeNode *code_list = NULL; /* רשימה ראשית */
@@ -194,5 +182,4 @@ void free_symbol_table(void) {
     symbol_table = NULL;
 }
 /*------------------- TEST ----------------------- */
-
 

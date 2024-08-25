@@ -2,6 +2,7 @@
 #define PROJECTC_UTIL_H
 
 #include "data_struct.h"
+#include "errors.h"
 
 typedef enum {
     MOV,
@@ -44,6 +45,8 @@ Symbol* find_symbol(const char *label);
 int is_register(int operand_type, const char *operand);
 void create_ent_file(const char *filename, Symbol *symbol_table);
 void create_ext_file(const char *filename, Symbol *symbol_table);
+void create_ob_file(const char *filename, char binaryOutput[][MAX_BINARY_LENGTH], int IC, int DC);
+void add_to_ext_file(const char *filename, const char *label, int address);
 
 
 

@@ -3,13 +3,17 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "headers/preproc.h"
-#include "headers/data_struct.h"
-#include "headers/globaldefine.h"
-#include "headers/util.h"
+#include "../headers/preproc.h"
+#include "../headers/globaldefine.h"
+#include "../headers/first_pass.h"
+#include "../headers/util.h"
 
 int error_detect = 0;
 
+int IC;
+int DC;
+int SIC;
+int SDC;
 int count_data_items(const char *data) {
     int count = 1;
     const char *p = data;
@@ -103,11 +107,11 @@ void first_pass(char *filename) {
                 if (label) {
                     add_symbol(label, DC + IC, 0, 0);  /* הוסף את הסמל עבור הנחיית המחרוזת */
                 }
-                encode_string(operand, &DC, binaryOutput,&IC);  /* קודד את המחרוזת */
+                encode_string(operand, &DC, binaryOutput, &IC);  /* קודד את המחרוזת */
             } else if (strcmp(instruction, ".entry") == 0) {
-                handle_entry(operand);  /* טיפול בהנחיית entry */
+                handle_entry(operand, IC);  /* טיפול בהנחיית entry */
             } else if (strcmp(instruction, ".extern") == 0) {
-                handle_extern(operand);  /* טיפול בהנחיית extern */
+                handle_extern(operand,IC);  /* טיפול בהנחיית extern */
             } else {
                 if (instructionCheck(instruction)) {
                     InstructionInfo info = instructionLength(instruction, &operand1, &operand2, amFile);
@@ -143,6 +147,8 @@ void first_pass(char *filename) {
 
     if (errC == 0) {
         adjust_data_symbols(IC);
+        create_ent_file(filename, symbol_table);
+        create_ext_file(filename, symbol_table);
     } else if (errC > 0) {
         error_detect = errC;
         print_external_error(21, amFile);
@@ -151,6 +157,8 @@ void first_pass(char *filename) {
     free_linked_list(macroTable);
     fclose(file);
 }
+
+
 
 
 
@@ -249,6 +257,7 @@ void encode_string(const char *operand, int *DC, char binaryOutput[][16], int *I
     strcpy(binaryOutput[*IC + *DC], binary);
     (*DC)++;
 }
+
 
 
 
@@ -400,7 +409,7 @@ int is_reserved_keyword(const char *label) {
     return 0;
 }
 
-void handle_entry(const char *label) {
+void handle_entry(const char *label, int address) {
     Symbol *sym = symbol_table;
     while (sym != NULL) {
         if (strcmp(sym->label, label) == 0) {
@@ -409,19 +418,19 @@ void handle_entry(const char *label) {
                 return;
             }
             sym->is_entry = 1;  /* Update the symbol to be an entry */
+            sym->address = address; /* Update the address */
             return;
         }
         sym = sym->next;
     }
 
     /* If the label is not found, add it as an entry */
-    if (!add_symbol(label, 0, 0, 1)) {
+    if (!add_symbol(label, address, 0, 1)) {
         print_internal_error(ERROR_CODE_16); /* Error: Label already exists */
     }
 }
 
-
-void handle_extern(const char *label) {
+void handle_extern(const char *label, int address) {
     Symbol *sym = symbol_table;
     while (sym != NULL) {
         if (strcmp(sym->label, label) == 0) {
@@ -430,16 +439,19 @@ void handle_extern(const char *label) {
                 return;
             }
             sym->is_external = 1;  /* Update the symbol to be external */
+            sym->address = address; /* Update the address */
             return;
         }
         sym = sym->next;
     }
 
     /* If the label is not found, add it as an external symbol */
-    if (!add_symbol(label, 0, 1, 0)) {
+    if (!add_symbol(label, address, 1, 0)) {
         print_internal_error(ERROR_CODE_17); /* Error: Label already exists */
     }
 }
+
+
 
 int is_valid_label(const char *label) {
     int i;
@@ -557,6 +569,7 @@ void encode_operand_value(const char *operand, int operandType, int isSource, ch
     int shiftAmount = 0;
     int encodedValue = 0;
     int i;
+    Symbol *sym = NULL;
 
     /* ניתוח סוג המיעון וביצוע קידוד מתאים */
     switch (operandType) {
@@ -567,13 +580,35 @@ void encode_operand_value(const char *operand, int operandType, int isSource, ch
             break;
 
         case 1:  /* מיעון ישיר */
-            /* כאן נמלא את המחרוזת באפסים לשימוש במעבר השני */
+            sym = find_symbol(operand);  /* חיפוש התווית בטבלת הסמלים */
+            if (sym != NULL) {
+                value = sym->address;  /* קבלת הכתובת של התווית */
+                if (sym->is_external) {
+                    are = 1;  /* External (A=0, R=0, E=1) */
+                } else {
+                    are = 2;  /* Relative (A=0, R=1, E=0) עבור תוויות מקומיות */
+                }
+                encodedValue = (value & 0xFFF) << 3;
+                encodedValue |= are;
+            } else {
+                /* קודד את כל המחרוזת באפסים */
+                memset(binaryOutput, '0', 15);
+                binaryOutput[15] = '\0';
+
+                /* סימון שהתווית לא נמצאה ויש לעדכן אותה במעבר השני */
+                if (symbolFlag) {
+                    *symbolFlag = 1;  /* מציין שיש לטפל בתווית במעבר השני */
+                }
+                return;
+            }
+
+            /* המרה לבינארי ושמירה במחרוזת */
             memset(binaryOutput, '0', 15);
             binaryOutput[15] = '\0';
-            if (symbolFlag) {
-                *symbolFlag = 1;  /* מסמן שיש תווית שדורשת קידוד במעבר השני */
+            for (i = 0; i < 15; i++) {
+                binaryOutput[14 - i] = (encodedValue & (1 << i)) ? '1' : '0';
             }
-            return;  /* במעבר הראשון לא נבצע את הקידוד עצמו */
+            return;
             break;
 
         case 2:  /* מיעון אוגר עקיף */
@@ -603,6 +638,11 @@ void encode_operand_value(const char *operand, int operandType, int isSource, ch
         binaryOutput[14 - i] = (encodedValue & (1 << i)) ? '1' : '0';
     }
 }
+
+
+
+
+
 
 void int_to_binary(int value, int num_bits, char *binaryOutput) {
     int i;

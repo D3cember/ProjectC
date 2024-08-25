@@ -1,9 +1,10 @@
-#include "headers/data_struct.h"
-#include "headers/preproc.h"
-#include "headers/errors.h"
-#include "headers/first_pass.h"
-#include "headers/globaldefine.h"
-#include "headers/util.h"
+#include "../headers/data_struct.h"
+#include "../headers/preproc.h"
+#include "../headers/errors.h"
+#include "../headers/first_pass.h"
+#include "../headers/globaldefine.h"
+#include "../headers/util.h"
+#include "../headers/second_pass.h"
 
 
 int main(int argc , char *argv[]) {
@@ -33,14 +34,20 @@ int main(int argc , char *argv[]) {
             
             printf("----- Starting Pre Processor stage ------\n");
             process_file(fileNameAss,fileNameAm);
-            printf("\n\n");
-            printf("----- Starting First Pass ------\n");
+            printf("----- End of Pre Processor stage ------\n\n");
+            printf("----- Starting First pass Stage ------\n");
             first_pass(fileNameAm);
+            printf("\n\n");
             if (error_detect != 0)
             {
                 print_internal_error(ERROR_CODE_21);
                 continue;
             }
+            printf("----- End of First Pass Stage  ------\n\n");
+            printf("----- Starting Second Pass stage ------\n");
+            second_pass(fileName,fileNameAm);
+            printf("----- End of Second Pass stage ------\n");
+
             /* ------ FOR TESTING --------   */
             print_symbol_table(symbol_table_filename);
             free_symbol_table();

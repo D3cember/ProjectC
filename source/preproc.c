@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "headers/preproc.h"
-#include "headers/util.h"
-#include "headers/globaldefine.h"
-#include "headers/errors.h"
+#include "../headers/preproc.h"
+#include "../headers/util.h"
+#include "../headers/globaldefine.h"
+#include "../headers/errors.h"
 
 
 LinkedListOfMacro *macroTable = NULL;

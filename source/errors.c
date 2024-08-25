@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "headers/first_pass.h"
+#include "../headers/first_pass.h"
 
 
 /* The Following array specifies the error code numbers and the corresponding error message.
@@ -81,4 +81,3 @@ void print_external_error(int error_code, location file) {
     printf("~~ERROR: ID:%d~~ in %s at line:%d at colonum : %s | there is error: %s\n", error_code, \
     file.file_name, file.line_num,file.colo, errors[error_code].error_msg);
 }
-
