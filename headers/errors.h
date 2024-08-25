@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "first_pass.h"
 
 
 /* Represents an error with an associated error ID and error message */

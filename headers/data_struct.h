@@ -29,19 +29,30 @@ typedef struct Symbol {
     char *label;
     int address;
     int is_external;
+    int is_entry;
     struct Symbol *next;
 } Symbol;
 
 extern Symbol *symbol_table;
+
+typedef struct CodeNode {
+    int address;
+    unsigned short binary_code; /* או unsigned short או משהו אחר, תלוי איך אתה רוצה לשמור את הקוד המקודד */
+    struct CodeNode *next;
+} CodeNode;
+
+
 
 void addNode(LinkedListOfMacro* macroTable , char *line); /*createing node*/ 
 void add_macro_content(NodeOnList *macro, char *line);
 void free_macro_content_list(LinkedListOfMacro_Content *macroTabble);
 void free_linked_list(LinkedListOfMacro *list);
 void *handle_malloc(size_t size);
-int add_symbol(const char *label, int address, int is_external);
+int add_symbol(const char *label, int address, int is_external, int is_entry);
 void print_symbol_table(const char *filename);
 void free_symbol_table(void);
+void add_code_node(int address, unsigned short binary_code);
+
 
 
 

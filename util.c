@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
+
 #include "headers/util.h"
 #include "headers/errors.h"
-#include "headers/preproc.h"
 
 
 const char *reserved_keywords[MAX_KEYWORDS] = {"mov","cmp","add","sub","lea","clr","not","inc","dec","jmp","bne","red","prn","jsr","rts","stop",".data",".string",".entry",".extern","r0","r1","r2","r3","r4","r5","r6","r7","macr","endmacr"};
@@ -143,6 +144,7 @@ int get_operand_type(const char *operand) {
     return -1;  /* Invalid operand type */
 }
 
+
 void analyze_line(char *line, char **label, char **instruction, char **operand, location *amFile, int *errC) {
     char *line_start;
     char *line_end;
@@ -164,6 +166,30 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
     *label = NULL;
     *instruction = NULL;
     *operand = NULL;
+
+    /* Check if the line starts with a dot (.) */
+    if (*line_start == '.') {
+        *instruction = strtok(line_start, " \t");
+        *operand = strtok(NULL, " \t");
+
+        if (strcmp(*instruction, ".entry") == 0) {
+            if (*operand != NULL && is_valid_label(*operand)) {
+                handle_entry(*operand);  /* Handle .entry directive */
+            } else {
+                print_external_error(20, *amFile);  /* Invalid or missing operand for .entry */
+                (*errC)++;  /* Increment error count */
+            }
+            return;  /* Exit after handling .entry */
+        } else if (strcmp(*instruction, ".extern") == 0) {
+            if (*operand != NULL && is_valid_label(*operand)) {
+                handle_extern(*operand);  /* Handle .extern directive */
+            } else {
+                print_external_error(21, *amFile);  /* Invalid or missing operand for .extern */
+                (*errC)++;  /* Increment error count */
+            }
+            return;  /* Exit after handling .extern */
+        }
+    }
 
     /* Check for label by looking for a colon */
     colon_position = strchr(line_start, ':');
@@ -210,6 +236,10 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
         }
     }
 }
+
+
+
+
 InstructionMap instruction_map[] = {
     {"mov", MOV, 0},
     {"cmp", CMP, 1},
@@ -222,16 +252,16 @@ InstructionMap instruction_map[] = {
     {"dec", DEC, 8},
     {"jmp", JMP, 9},
     {"bne", BNE, 10},
-    {"jsr", JSR, 13},
     {"red", RED, 11},
     {"prn", PRN, 12},
+    {"jsr", JSR, 13},
     {"rts", RTS, 14},
-    {"stop", STOP, 15}
+    {"stop", STOP, 15},
 };
 
 InstructionType get_instruction_type(const char *instruction) {
     int i;
-    for (i = 0; i < INSTRUCTION_COUNT; i++) {
+    for (i = 0; i <= INSTRUCTION_COUNT; i++) {
         if (strcmp(instruction, instruction_map[i].name) == 0) {
             return instruction_map[i].type;
         }
@@ -241,13 +271,145 @@ InstructionType get_instruction_type(const char *instruction) {
 
 int get_opcode(const char *instruction) {
     int i;
-    for (i = 0; i < INSTRUCTION_COUNT; i++) {
+    for (i = 0; i <= INSTRUCTION_COUNT; i++) {
         if (strcmp(instruction, instruction_map[i].name) == 0) {
             return instruction_map[i].opcode;
         }
     }
     return -1;  /* Invalid instruction */
 }
+int set_operand_bits(int operandType, int isSource) {
+    int value = 0;
+
+    switch (operandType) {
+        case 0:  /* Immediate */
+            value = 1;  /* ביט 0 מייצג Immediate */
+            break;
+        case 1:  /* Direct */
+            value = 2;  /* ביט 1 מייצג Direct */
+            break;
+        case 2:  /* Register Indirect */
+            value = 4;  /* ביט 2 מייצג Register Indirect */
+            break;
+        case 3:  /* Register Direct */
+            value = 8;  /* ביט 3 מייצג Register Direct */
+            break;
+        default:
+            return 0;  /* במקרה של שגיאה */
+    }
+
+    if (isSource) {
+        return value << 7;  /* קידוד בביטים 10-7 */
+    } else {
+        return value << 3;  /* קידוד בביטים 6-3 */
+    }
+}
+
+Symbol* find_symbol(const char *label) {
+    Symbol *current_label_name = symbol_table;
+    while (current_label_name != NULL) {
+        if (strcmp(label, current_label_name->label) == 0) {
+            return current_label_name;  /* מחזיר את המצביע לסמל שנמצא */
+        }
+        current_label_name = current_label_name->next;  /* מעבר לסמל הבא */
+    }
+    return NULL;  /* הסמל לא נמצא */
+}
+
+int is_register(int operand_type, const char *operand) {
+    if (operand_type == 2 || operand_type == 3) {
+        /* בדיקת רגיסטר ישיר (r0 עד r7) */
+        if (operand_type == 3 && operand[0] == 'r' && operand[1] >= '0' && operand[1] <= '7' && operand[2] == '\0') {
+            return 1;
+        }
+        /* בדיקת רגיסטר עקיף (*r0 עד *r7) */
+        if (operand_type == 2 && operand[0] == '*' && operand[1] == 'r' && operand[2] >= '0' && operand[2] <= '7' && operand[3] == '\0') {
+            return 1;
+        }
+    }
+    return 0;  /* לא רגיסטר חוקי */
+}
+
+void create_ent_file(const char *base_filename, Symbol *symbol_table) {
+    char *ent_filename;
+    FILE *ent_file;
+    Symbol *sym;
+
+    /* יצירת שם הקובץ עם סיומת .ent */
+    ent_filename = (char *)malloc(strlen(base_filename) + 5);  /* 4 תווים עבור ".ent" ועוד אחד ל-null terminator */
+    if (!ent_filename) {
+        print_internal_error(ERROR_CODE_1);  /* Error allocating memory */
+        return;
+    }
+    strcpy(ent_filename, base_filename);
+    strcat(ent_filename, ".ent");
+
+    ent_file = fopen(ent_filename, "w");
+    if (!ent_file) {
+        print_internal_error(ERROR_CODE_2);  /* Error opening file */
+        free(ent_filename);
+        return;
+    }
+
+    sym = symbol_table;
+    while (sym != NULL) {
+        if (sym->is_entry) {
+            fprintf(ent_file, "%s %d\n", sym->label, sym->address);
+        }
+        sym = sym->next;
+    }
+
+    fclose(ent_file);
+    free(ent_filename);
+}
+
+
+void create_ext_file(const char *base_filename, Symbol *symbol_table) {
+    char *ext_filename;
+    FILE *ext_file;
+    Symbol *sym;
+
+    /* יצירת שם הקובץ עם סיומת .ext */
+    ext_filename = (char *)malloc(strlen(base_filename) + 5);  /* 4 תווים עבור ".ext" ועוד אחד ל-null terminator */
+    if (!ext_filename) {
+        print_internal_error(ERROR_CODE_1);  /* Error allocating memory */
+        return;
+    }
+    strcpy(ext_filename, base_filename);
+    strcat(ext_filename, ".ext");
+
+    ext_file = fopen(ext_filename, "w");
+    if (!ext_file) {
+        print_internal_error(ERROR_CODE_2);  /* Error opening file */
+        free(ext_filename);
+        return;
+    }
+
+    sym = symbol_table;
+    while (sym != NULL) {
+        if (sym->is_external) {
+            fprintf(ext_file, "%s %04d\n", sym->label, sym->address);
+        }
+        sym = sym->next;
+    }
+
+    fclose(ext_file);
+    free(ext_filename);
+}
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

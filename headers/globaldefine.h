@@ -28,7 +28,6 @@
 
 #define INSTRUCTION_COUNT 15
 
-#define MAX_BINARY_LENGTH 16
 
 
 

@@ -4,6 +4,7 @@
 #include <ctype.h>
 
 #include "headers/preproc.h"
+#include "headers/data_struct.h"
 #include "headers/globaldefine.h"
 #include "headers/util.h"
 
@@ -44,9 +45,13 @@ void first_pass(char *filename) {
     char *operand2 = NULL;
     char *trimmed_line = NULL;
     location amFile;
+    char binaryOutput[100][MAX_BINARY_LENGTH]; /* מערך לאחסון הקוד הבינארי */
+    int instr_len;
+    unsigned short binaryCode;
 
     /* פותחים את הקובץ לקריאה */
-    if (!(file = fopen(filename, "r"))) {
+    file = fopen(filename, "r");
+    if (!file) {
         print_internal_error(ERROR_CODE_2);
         return;
     }
@@ -61,7 +66,9 @@ void first_pass(char *filename) {
 
         /* דלג על שורות ריקות או תגובות */
         trimmed_line = line;
-        if (*trimmed_line == '\0' || *trimmed_line == ';') continue;
+        if (*trimmed_line == '\0' || *trimmed_line == ';' || *trimmed_line == '\n') {
+            continue;
+        }
 
         /* ניתוח השורה */
         analyze_line(trimmed_line, &label, &instruction, &operand, &amFile, &errC);
@@ -69,7 +76,7 @@ void first_pass(char *filename) {
         /* בדוק אם אין הוראה בשורה */
         if (instruction == NULL) {
             amFile.colo = label;
-            print_external_error(18, amFile);  /* Error: Missing instruction */
+            print_external_error(18, amFile);  /* שגיאה: הוראה חסרה */
             errC++;
             continue;  /* דלג על השורה הנוכחית */
         }
@@ -82,49 +89,58 @@ void first_pass(char *filename) {
             operand1 = operand;
         }
 
-        /* Debugging output */
-        printf("Label: %s, Instruction: %s, Operand: %s\n", label ? label : "NULL", instruction ? instruction : "NULL", operand ? operand : "NULL");
+        /* פלט למטרות ניפוי שגיאות */
+        printf("Label: %s, Instruction: %s, Operand1: %s, Operand2: %s\n", label ? label : "NULL", instruction ? instruction : "NULL", operand1 ? operand1 : "NULL", operand2 ? operand2 : "NULL");
 
-        /* Process the instruction and operands */
+        /* עיבוד ההוראה והאופרנדים */
         if (instruction) {
             if (strcmp(instruction, ".data") == 0) {
                 if (label) {
-                    add_symbol(label, DC + IC, 0);  /* Add the symbol for data directive */
+                    add_symbol(label, DC + IC, 0, 0);  /* הוסף את הסמל עבור הנחיית הנתונים */
                 }
-                encode_data(operand, &DC);  /* Encode the data */
+                encode_data(operand, &DC, binaryOutput,&IC);  /* קודד את הנתונים */
             } else if (strcmp(instruction, ".string") == 0) {
                 if (label) {
-                    add_symbol(label, DC + IC, 0);  /* Add the symbol for string directive */
+                    add_symbol(label, DC + IC, 0, 0);  /* הוסף את הסמל עבור הנחיית המחרוזת */
                 }
-                encode_string(operand, &DC);  /* Encode the string */
+                encode_string(operand, &DC, binaryOutput,&IC);  /* קודד את המחרוזת */
             } else if (strcmp(instruction, ".entry") == 0) {
-                while ((operand = strtok(operand, ", ")) != NULL) {
-                    handle_entry(operand);  /* Handle entry directive */
-                }
+                handle_entry(operand);  /* טיפול בהנחיית entry */
             } else if (strcmp(instruction, ".extern") == 0) {
-                while ((operand = strtok(operand, ", ")) != NULL) {
-                    handle_extern(operand);  /* Handle extern directive */
-                }
+                handle_extern(operand);  /* טיפול בהנחיית extern */
             } else {
                 if (instructionCheck(instruction)) {
-                    int instr_len = instructionLength(instruction, operand1, operand2, amFile);
-                    if (instr_len == -1) {
+                    InstructionInfo info = instructionLength(instruction, &operand1, &operand2, amFile);
+                    if (info.length == -1) {
                         errC++;
                         continue;
                     }
+                    instr_len = info.length;
                     if (label) {
-                        add_symbol(label, IC, 0);  /* Add the symbol for the instruction */
+                        add_symbol(label, IC, 0, 0);  /* הוסף את הסמל עבור ההוראה */
                     }
-                    IC += instr_len;  /* Increment the instruction counter */
-                    printf("Instruction: %s, new IC: %d\n", instruction, IC);  /* Debugging output */
+                    
+                    /* קידוד ההוראה */
+                    if (encodeInstruction(instruction, operand1, operand2, IC, binaryOutput, amFile) >= 0) {
+                        /* המרת מחרוזת בינארית לערך מספרי */
+                        binaryCode = (unsigned short)strtol(binaryOutput[IC], NULL, 2);
+                        add_code_node(IC, binaryCode); /* הוספת הקוד המקודד לרשימה המקושרת */
+                    } else {
+                        print_external_error(22, amFile);  /* שגיאה: כשל בקידוד ההוראה */
+                        errC++;
+                    }
+
+                    IC += instr_len;  /* הגדלת מונה ההוראות */
+                    printf("Instruction: %s, new IC: %d\n", instruction, IC);  /* פלט לניפוי שגיאות */
                 } else {
                     amFile.colo = instruction;
-                    print_external_error(20, amFile);  /* Unknown instruction error */
+                    print_external_error(20, amFile);  /* שגיאה: הוראה לא ידועה */
                     errC++;
                 }
             }
         }
     }
+
     if (errC == 0) {
         adjust_data_symbols(IC);
     } else if (errC > 0) {
@@ -135,6 +151,7 @@ void first_pass(char *filename) {
     free_linked_list(macroTable);
     fclose(file);
 }
+
 
 
 
@@ -152,10 +169,11 @@ void adjust_data_symbols(int IC) {
 
 
 /* פונקציה לקידוד נתונים בזיכרון */
-void encode_data(const char *operands, int *DC) {
+void encode_data(const char *operands, int *DC, char binaryOutput[][16], int *IC) {
     int value;
     const char *p;
     char *endptr;
+    char binary[16];
 
     p = operands;
     while (p != NULL) {
@@ -172,8 +190,15 @@ void encode_data(const char *operands, int *DC) {
                 print_internal_error(ERROR_CODE_22);
                 return;
             }
-            /* הדפסת הכתובת והערך המקודד */
-            printf("Encoded data at %d: %d\n", *DC + IC_START, value);
+            
+            /* אם הערך שלילי, מבצעים המרה למשלים ל-2 */
+            if (value < 0) {
+                value = (1 << 15) + value;  /* מוסיפים את הערך למסקה של 12 ביטים */
+            }
+
+            /* קידוד הערך הבינארי ושמירה בזיכרון */
+            int_to_binary(value, 15, binary);
+            strcpy(binaryOutput[*DC + *IC], binary);
             (*DC)++;  /* עדכון מונה הנתונים */
             p = endptr;
         } else {
@@ -189,10 +214,12 @@ void encode_data(const char *operands, int *DC) {
     }
 }
 
+
 /* פונקציה לקידוד מחרוזות בזיכרון */
-void encode_string(const char *operand, int *DC) {
+void encode_string(const char *operand, int *DC, char binaryOutput[][16], int *IC) {
     int length, i;
     const char *p;
+    char binary[16];
 
     p = operand;
     /* דלג על רווחים או טאבים */
@@ -211,42 +238,62 @@ void encode_string(const char *operand, int *DC) {
             print_internal_error(ERROR_CODE_23);
             return;
         }
-        /* הדפסת הכתובת והתו המקודד */
-        printf("Encoded string at %d: %c\n", *DC + IC_START, p[i]);
+        /* קידוד התו ושמירה בזיכרון */
+        int_to_binary((int)p[i], 15, binary);
+        strcpy(binaryOutput[*IC + *DC], binary);  /* שמירת הקידוד במיקום הנכון */
         (*DC)++;  /* עדכון מונה הנתונים */
     }
 
     /* קידוד תו סיום המחרוזת */
-    printf("Encoded string at %d: \\0\n", *DC + IC_START);
+    int_to_binary(0, 15, binary);  /* קידוד תו הסיום (0) במקום *IC ולא את *IC עצמו */
+    strcpy(binaryOutput[*IC + *DC], binary);
     (*DC)++;
 }
 
-int instructionLength(const char *instruction, const char *operand1, const char *operand2, location amFile) {
-    int length = 1;
+
+
+InstructionInfo instructionLength(const char *instruction, char **operand1, char **operand2, location amFile) {
+    InstructionInfo info = {1, {-1, -1}};  /* ערכים התחלתיים */
     int operand_count = 0;
-    int operand_types[2];  /* תמיכה בעד 2 אופרנדים */
     InstructionType instr_type = get_instruction_type(instruction);
-    char combined_operands[MAX_LINE_LENGTH];
+    char *temp;
 
     /* ניתוח האופרנדים בנפרד */
-    if (operand1 != NULL) {
-        operand_types[operand_count] = get_operand_type(operand1);
-        if (operand_types[operand_count] == -1) {
-            amFile.colo = operand1;
-            print_external_error(24, amFile);  /* Error: Invalid operand type for source */
-            return -1;
+    if (*operand1 != NULL) {
+        info.operand_types[0] = get_operand_type(*operand1);  /* קביעת סוג המיעון של המקור */
+        if (info.operand_types[0] == -1) {
+            amFile.colo = *operand1;
+            print_external_error(24, amFile);  /* שגיאה: סוג אופרנד לא תקין עבור מקור */
+            info.length = -1;
+            return info;
         }
         operand_count++;
     }
 
-    if (operand2 != NULL) {
-        operand_types[operand_count] = get_operand_type(operand2);
-        if (operand_types[operand_count] == -1) {
-            amFile.colo = operand2;
-            print_external_error(25, amFile);  /* Error: Invalid operand type for destination */
-            return -1;
+    if (*operand2 != NULL) {
+        info.operand_types[1] = get_operand_type(*operand2);  /* קביעת סוג המיעון של היעד */
+        if (info.operand_types[1] == -1) {
+            amFile.colo = *operand2;
+            print_external_error(25, amFile);  /* שגיאה: סוג אופרנד לא תקין עבור יעד */
+            info.length = -1;
+            return info;
         }
         operand_count++;
+    }
+
+    /* אם יש רק אופרנד אחד, הוא תמיד היעד */
+    if (operand_count == 1 && *operand1 != NULL) {  /* בדיקה אם operand1 אינו NULL */
+        temp = (char *)malloc(strlen(*operand1) + 1);  /* הקצאת זיכרון לאופרנד היעד */
+        if (temp == NULL) {
+            print_internal_error(ERROR_CODE_3);  /* טיפול בשגיאת זיכרון */
+            info.length = -1;
+            return info;
+        }
+        strcpy(temp, *operand1);  /* העתקת ערך האופרנד הראשון ליעד */
+        *operand2 = temp;  /* הגדרת האופרנד השני */
+        *operand1 = NULL;  /* איפוס האופרנד הראשון */
+        info.operand_types[1] = info.operand_types[0];
+        info.operand_types[0] = -1;
     }
 
     /* ניהול ההוראות לפי סוג */
@@ -256,127 +303,90 @@ int instructionLength(const char *instruction, const char *operand1, const char 
         case SUB:
             if (operand_count != 2) {
                 amFile.colo = instruction;
-                print_external_error(operand_count < 2 ? 27 : 26, amFile);  /* Error: Operand count mismatch */
-                return -1;
+                print_external_error(operand_count < 2 ? 27 : 26, amFile);  /* שגיאה: אי התאמה במספר האופרנדים */
+                info.length = -1;
+                return info;
             }
-            /* בדיקה עבור MOV, ADD, SUB - המקור יכול להיות בשיטות 0,1,2,3, היעד יכול להיות בשיטות 1,2,3 בלבד */
-            if (operand_types[1] == 0) {
-                amFile.colo = operand2;
-                print_external_error(25, amFile);  /* Error: Invalid destination operand type */
-                return -1;
+            if (info.operand_types[1] == 0) {
+                amFile.colo = *operand2;
+                print_external_error(25, amFile);  /* שגיאה: סוג יעד לא תקין */
+                info.length = -1;
+                return info;
             }
-            length += (operand_types[0] == 3 && operand_types[1] == 3) ? 1 : 2;
+            /* עדכון אורך ההוראה */
+            info.length += (is_register(info.operand_types[0], *operand1) && is_register(info.operand_types[1], *operand2)) ? 1 : 2;
             break;
 
         case CMP:
             if (operand_count != 2) {
                 amFile.colo = instruction;
-                print_external_error(operand_count < 2 ? 27 : 26, amFile);  /* Error: Operand count mismatch */
-                return -1;
+                print_external_error(operand_count < 2 ? 27 : 26, amFile);  /* שגיאה: אי התאמה במספר האופרנדים */
+                info.length = -1;
+                return info;
             }
-            /* עבור CMP - שני האופרנדים יכולים להיות בשיטות 0,1,2,3 */
-            length += (operand_types[0] == 3 && operand_types[1] == 3) ? 1 : 2;
+            /* עדכון אורך ההוראה */
+            info.length += (is_register(info.operand_types[0], *operand1) && is_register(info.operand_types[1], *operand2)) ? 1 : 2;
             break;
 
         case LEA:
             if (operand_count != 2) {
                 amFile.colo = instruction;
-                print_external_error(operand_count < 2 ? 27 : 26, amFile);  /* Error: Operand count mismatch */
-                return -1;
+                print_external_error(operand_count < 2 ? 27 : 26, amFile);  /* שגיאה: אי התאמה במספר האופרנדים */
+                info.length = -1;
+                return info;
             }
-            /* עבור LEA - המקור חייב להיות בשיטת מיעון 1 בלבד, היעד יכול להיות בשיטות 1,2,3 */
-            if (operand_types[0] != 1 || operand_types[1] == 0) {
-                snprintf(combined_operands, sizeof(combined_operands), "%s %s", operand1, operand2);
-                amFile.colo = combined_operands;
-                print_external_error(28, amFile);  /* Error: Invalid operand types for LEA */
-                return -1;
+            if (info.operand_types[0] != 1 || info.operand_types[1] == 0) {
+                amFile.colo = *operand1;
+                print_external_error(28, amFile);  /* שגיאה: סוגי אופרנדים לא תקינים עבור LEA */
+                info.length = -1;
+                return info;
             }
-            length += 2;
+            info.length += 2;
             break;
 
         case CLR:
         case NOT:
         case INC:
         case DEC:
-            if (operand_count != 1) {
-                amFile.colo = instruction;
-                print_external_error(operand_count < 1 ? 27 : 26, amFile);  /* Error: Operand count mismatch */
-                return -1;
-            }
-            /* עבור CLR, NOT, INC, DEC - היעד יכול להיות בשיטות 1,2,3 בלבד */
-            if (!(operand_types[0] == 1 || operand_types[0] == 2 || operand_types[0] == 3)) {
-                amFile.colo = operand1;
-                print_external_error(28, amFile);  /* Error: Invalid operand type for instruction */
-                return -1;
-            }
-            length += 1;
-            break;
-
         case JMP:
         case BNE:
         case JSR:
-            if (operand_count != 1) {
-                amFile.colo = instruction;
-                print_external_error(operand_count < 1 ? 27 : 26, amFile);  /* Error: Operand count mismatch */
-                return -1;
-            }
-            /* עבור JMP, BNE, JSR - היעד יכול להיות בשיטות 1,2 בלבד */
-            if (!(operand_types[0] == 1 || operand_types[0] == 2)) {
-                amFile.colo = operand1;
-                print_external_error(28, amFile);  /* Error: Invalid operand type for instruction */
-                return -1;
-            }
-            length += 1;
-            break;
-
         case PRN:
-            if (operand_count != 1) {
-                amFile.colo = instruction;
-                print_external_error(operand_count < 1 ? 27 : 26, amFile);  /* Error: Operand count mismatch */
-                return -1;
-            }
-            /* עבור PRN - היעד יכול להיות בשיטות 0,1,2,3 */
-            if (!(operand_types[0] == 0 || operand_types[0] == 1 || operand_types[0] == 2 || operand_types[0] == 3)) {
-                amFile.colo = operand1;
-                print_external_error(28, amFile);  /* Error: Invalid operand type for PRN */
-                return -1;
-            }
-            length += 1;
-            break;
-
         case RED:
             if (operand_count != 1) {
                 amFile.colo = instruction;
-                print_external_error(operand_count < 1 ? 27 : 26, amFile);  /* Error: Operand count mismatch */
-                return -1;
+                print_external_error(operand_count < 1 ? 27 : 26, amFile);  /* שגיאה: אי התאמה במספר האופרנדים */
+                info.length = -1;
+                return info;
             }
-            /* עבור RED - היעד יכול להיות בשיטות 1,2,3 בלבד */
-            if (!(operand_types[0] == 1 || operand_types[0] == 2 || operand_types[0] == 3)) {
-                amFile.colo = operand1;
-                print_external_error(28, amFile);  /* Error: Invalid operand type for RED */
-                return -1;
+            if (info.operand_types[1] == 0 && instr_type != PRN) { /* PRN יכול לקבל Immediate */
+                amFile.colo = *operand2;
+                print_external_error(28, amFile);  /* שגיאה: סוג יעד לא תקין עבור הפקודה */
+                info.length = -1;
+                return info;
             }
-            length += 1;
+            info.length += 1;
             break;
 
         case RTS:
         case STOP:
             if (operand_count != 0) {
                 amFile.colo = instruction;
-                print_external_error(29, amFile);  /* Error: Instruction should not receive any operands */
-                return -1;
+                print_external_error(29, amFile);  /* שגיאה: הפקודה לא צריכה לקבל אופרנדים */
+                info.length = -1;
+                return info;
             }
             break;
 
         default:
             amFile.colo = instruction;
-            print_external_error(20, amFile);  /* Error: Unknown instruction */
-            return -1;
+            print_external_error(20, amFile);  /* שגיאה: פקודה לא ידועה */
+            info.length = -1;
+            return info;
     }
 
-    return length;
+    return info;
 }
-
 
 
 
@@ -394,20 +404,42 @@ void handle_entry(const char *label) {
     Symbol *sym = symbol_table;
     while (sym != NULL) {
         if (strcmp(sym->label, label) == 0) {
-            /* ניתן להוסיף טיפול ספציפי לתוויות entry אם נדרש */
+            if (sym->is_external) {
+                print_internal_error(ERROR_CODE_18); /* Error: Label cannot be both extern and entry */
+                return;
+            }
+            sym->is_entry = 1;  /* Update the symbol to be an entry */
             return;
         }
         sym = sym->next;
     }
-    print_internal_error(ERROR_CODE_16); /* תווית לא מוגדרת */
-}
 
-void handle_extern(const char *label) {
-    if (!add_symbol(label, 0, 1)) {
-        print_internal_error(ERROR_CODE_17); /* תווית קיימת כבר עם שם אחר */
+    /* If the label is not found, add it as an entry */
+    if (!add_symbol(label, 0, 0, 1)) {
+        print_internal_error(ERROR_CODE_16); /* Error: Label already exists */
     }
 }
 
+
+void handle_extern(const char *label) {
+    Symbol *sym = symbol_table;
+    while (sym != NULL) {
+        if (strcmp(sym->label, label) == 0) {
+            if (sym->is_entry) {
+                print_internal_error(ERROR_CODE_18); /* Error: Label cannot be both extern and entry */
+                return;
+            }
+            sym->is_external = 1;  /* Update the symbol to be external */
+            return;
+        }
+        sym = sym->next;
+    }
+
+    /* If the label is not found, add it as an external symbol */
+    if (!add_symbol(label, 0, 1, 0)) {
+        print_internal_error(ERROR_CODE_17); /* Error: Label already exists */
+    }
+}
 
 int is_valid_label(const char *label) {
     int i;
@@ -450,22 +482,132 @@ int is_valid_label(const char *label) {
     return 1; /* The label is valid */
 }
 
-/*int encoded_instruction(const char *operand1 , const char *operand2,const char *instruction){
-    int encoded_value , opcode , srcSort , destSort , are , line;
-    are = 4;
+int encodeInstruction(const char *instruction, char *operand1, char *operand2, int IC, char binaryOutput[][16], location amFile) {
+    int opcode, srcModeBits = 0, destModeBits = 0, are;
+    int srcMode, destMode;
+    int encodedValue;
+    char instructionBinary[16];
+    int symbolFlag = 0;  /* נשתמש בדגל כדי לדעת אם יש תווית שמצריכה טיפול במעבר השני */
 
+    are = 4;  /* ערך ברירת מחדל */
 
+    /* השגת ה-Opcode */
+    opcode = get_opcode(instruction);
+    if (opcode == -1) return -1;  /* Opcode לא חוקי */
 
-    
+    /* אם ההוראה היא stop או rts, אין צורך לאופרנדים */
+    if (strcmp(instruction, "stop") == 0 || strcmp(instruction, "rts") == 0) {
+        /* רק מקודדים את ה-Opcode */
+        encodedValue = (opcode << 11) | are;
+        int_to_binary(encodedValue, 15, instructionBinary);
+        strcpy(binaryOutput[IC], instructionBinary);
+        return IC + 1;  /* מחזירים את ה-IC המעודכן */
+    }
 
+    /* השגת סוגי האופרנדים */
+    srcMode = operand1 ? get_operand_type(operand1) : -1;
+    destMode = operand2 ? get_operand_type(operand2) : -1;
 
-    
+    /* קידוד הביטים עבור סוגי המיעון */
+    if (srcMode != -1) {
+        srcModeBits = set_operand_bits(srcMode, 1);  /* קידוד עבור מקור */
+    }
+    if (destMode != -1) {
+        destModeBits = set_operand_bits(destMode, 0);  /* קידוד עבור יעד */
+    }
 
-}*/
+    /* שילוב ה-Opcode עם סוגי המיעון */
+    encodedValue = (opcode << 11) | srcModeBits | destModeBits | are;
 
+    /* המרה לבינארי ושמירה בתא הראשון */
+    int_to_binary(encodedValue, 15, instructionBinary);
+    strcpy(binaryOutput[IC], instructionBinary);
+    IC++;
 
+    /* בדיקה אם שני האופרנדים הם רגיסטרים בשיטות 2 או 3 */
+    if ((srcMode == 2 || srcMode == 3) && (destMode == 2 || destMode == 3)) {
+        int regNumSrc = (srcMode == 2) ? operand1[2] - '0' : operand1[1] - '0';
+        int regNumDest = (destMode == 2) ? operand2[2] - '0' : operand2[1] - '0';
+        encodedValue = (regNumSrc << 6) | (regNumDest << 3) | are;
 
+        /* המרה לבינארי ושמירה בתא השני */
+        int_to_binary(encodedValue, 15, instructionBinary);
+        strcpy(binaryOutput[IC], instructionBinary);
+        IC++;
+    } else {
+        /* קידוד אופרנדים בנפרד */
+        if (srcMode != -1) {
+            encode_operand_value(operand1, srcMode, 1, binaryOutput[IC], &symbolFlag);
+            IC++;
+        }
 
+        if (destMode != -1) {
+            encode_operand_value(operand2, destMode, 0, binaryOutput[IC], &symbolFlag);
+            IC++;
+        }
+    }
 
+    return IC;  /* החזרת מונה ההוראות המעודכן */
+}
 
+void encode_operand_value(const char *operand, int operandType, int isSource, char *binaryOutput, int *symbolFlag) {
+    int value = 0;
+    int regNum = 0;
+    int are = 4;  /* ברירת מחדל: A דלוק */
+    int shiftAmount = 0;
+    int encodedValue = 0;
+    int i;
 
+    /* ניתוח סוג המיעון וביצוע קידוד מתאים */
+    switch (operandType) {
+        case 0:  /* מיעון מיידי */
+            value = atoi(&operand[1]);  /* לדוגמה #5 */
+            are = 4;  /* Immediate הוא תמיד Absolute (A=1, R=0, E=0) */
+            encodedValue = (value & 0xFFF) << 3;  /* 12 ביטים מ-3 עד 14 */
+            break;
+
+        case 1:  /* מיעון ישיר */
+            /* כאן נמלא את המחרוזת באפסים לשימוש במעבר השני */
+            memset(binaryOutput, '0', 15);
+            binaryOutput[15] = '\0';
+            if (symbolFlag) {
+                *symbolFlag = 1;  /* מסמן שיש תווית שדורשת קידוד במעבר השני */
+            }
+            return;  /* במעבר הראשון לא נבצע את הקידוד עצמו */
+            break;
+
+        case 2:  /* מיעון אוגר עקיף */
+            regNum = operand[2] - '0';  /* לדוגמה *r3 */
+            are = 4;  /* Register Indirect הוא תמיד Absolute (A=1, R=0, E=0) */
+            shiftAmount = isSource ? 6 : 3;  /* מקור בביטים 8-6, יעד בביטים 5-3 */
+            encodedValue = regNum << shiftAmount;
+            break;
+
+        case 3:  /* מיעון אוגר ישיר */
+            regNum = operand[1] - '0';  /* לדוגמה r3 */
+            are = 4;  /* Register Direct הוא תמיד Absolute (A=1, R=0, E=0) */
+            shiftAmount = isSource ? 6 : 3;  /* מקור בביטים 8-6, יעד בביטים 5-3 */
+            encodedValue = regNum << shiftAmount;
+            break;
+    }
+
+    /* שילוב ה-A/R/E עם הערך */
+    encodedValue |= are;
+
+    /* איפוס המחרוזת הבינארית */
+    memset(binaryOutput, '0', 15);
+    binaryOutput[15] = '\0';
+
+    /* המרה לבינארי ושמירה במחרוזת */
+    for (i = 0; i < 15; i++) {
+        binaryOutput[14 - i] = (encodedValue & (1 << i)) ? '1' : '0';
+    }
+}
+
+void int_to_binary(int value, int num_bits, char *binaryOutput) {
+    int i;
+    for (i = 0; i < num_bits; i++) {
+        binaryOutput[i] = (value & (1 << (num_bits - 1 - i))) ? '1' : '0';
+    }
+    binaryOutput[num_bits] = '\0';  /* סיום המחרוזת */
+}

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "headers/data_struct.h"
 #include "headers/util.h"
 #include "headers/errors.h"
 
@@ -81,7 +82,7 @@ void *handle_malloc(size_t size) {
 }
 Symbol *symbol_table = NULL;
 
-int add_symbol(const char *label, int address, int is_external) {
+int add_symbol(const char *label, int address, int is_external, int is_entry){
     Symbol *new_symbol;
     Symbol *current;
     char *label_copy = NULL;
@@ -117,6 +118,7 @@ int add_symbol(const char *label, int address, int is_external) {
     new_symbol->label = label_copy;
     new_symbol->address = address;
     new_symbol->is_external = is_external;
+    new_symbol->is_entry = is_entry;
     new_symbol->next = symbol_table;
 
     /* עדכון ראש הרשימה המקושרת */
@@ -125,14 +127,16 @@ int add_symbol(const char *label, int address, int is_external) {
     return 1;
 }
 
-/*CodeNode *code_list = NULL;  Main list */
 
-/*void add_code_node(int address, unsigned short binary_code) {
+CodeNode *code_list = NULL; /* רשימה ראשית */
+
+
+void add_code_node(int address, unsigned short binary_code) {
     CodeNode *new_node = (CodeNode *)malloc(sizeof(CodeNode));
     CodeNode *current;
 
     if (!new_node) {
-        print_internal_error(ERROR_CODE_3); // טיפול בשגיאת זיכרון
+        print_internal_error(ERROR_CODE_3); /* טיפול בשגיאת זיכרון*/
         return;
     }
 
@@ -149,7 +153,7 @@ int add_symbol(const char *label, int address, int is_external) {
         }
         current->next = new_node;
     }
-}*/
+}
 
 
 
