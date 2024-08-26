@@ -84,21 +84,20 @@ Symbol *symbol_table = NULL;
 
 int add_symbol(const char *label, int address, int is_external, int is_entry) {
     Symbol *current = symbol_table;
+    Symbol *new_symbol = NULL;
     
     while (current != NULL) {
         if (label && current->label && strcmp(current->label, label) == 0) {
-            // אם התווית כבר קיימת כ-external או entry, נעדכן רק את הכתובת
             if (current->is_external || current->is_entry) {
                 current->address = address;
-                return 1; // תווית עודכנה בהצלחה
+                return 1; 
             }
             return 0; /* תווית קיימת */
         }
         current = current->next;
     }
 
-    // אם התווית לא קיימת, נוסיף אותה לטבלה
-    Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
+    new_symbol = (Symbol *)malloc(sizeof(Symbol));
     if (!new_symbol) {
         print_internal_error(ERROR_CODE_1); /* Error allocating memory */
         return 0;
@@ -119,29 +118,32 @@ int add_symbol(const char *label, int address, int is_external, int is_entry) {
 CodeNode *code_list = NULL; /* רשימה ראשית */
 
 
-void add_code_node(int address, unsigned short binary_code) {
+void add_code_node(int address, const char *binary_code) {
     CodeNode *new_node = (CodeNode *)malloc(sizeof(CodeNode));
-    CodeNode *current;
-
     if (!new_node) {
-        print_internal_error(ERROR_CODE_3); /* טיפול בשגיאת זיכרון*/
+        print_internal_error(ERROR_CODE_3);
         return;
     }
 
     new_node->address = address;
-    new_node->binary_code = binary_code;
+    strcpy(new_node->binary_code, binary_code);
     new_node->next = NULL;
 
     if (code_list == NULL) {
         code_list = new_node;
     } else {
-        current = code_list;
+        CodeNode *current = code_list;
         while (current->next != NULL) {
             current = current->next;
         }
         current->next = new_node;
     }
+    printf("Node added: Address: %d, Binary Code: %s\n", address, binary_code);  
 }
+
+
+
+
 
 
 
@@ -170,6 +172,16 @@ void print_symbol_table(const char *filename) {
 
     fclose(file);
 }
+void print_binary_code_list(FILE *file) {
+    CodeNode *current = code_list;
+    fprintf(file, "----- Printing all binary codes in the linked list -----\n");
+    while (current != NULL) {
+        fprintf(file, "Address: %d, Binary Code: %s\n", current->address, current->binary_code);
+        current = current->next;
+    }
+    fprintf(file, "----- End of the linked list -----\n");
+}
+
 
 void free_symbol_table(void) {
     Symbol *current = symbol_table;

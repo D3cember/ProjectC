@@ -7,7 +7,6 @@
 #include "../headers/globaldefine.h"
 #include "../headers/first_pass.h"
 #include "../headers/util.h"
-
 int error_detect = 0;
 
 int IC;
@@ -49,9 +48,13 @@ void first_pass(char *filename) {
     char *operand2 = NULL;
     char *trimmed_line = NULL;
     location amFile;
-    char binaryOutput[100][MAX_BINARY_LENGTH]; /* מערך לאחסון הקוד הבינארי */
     int instr_len;
-    unsigned short binaryCode;
+
+    FILE *outputFile = fopen("output_binary_codes.txt", "w");
+    if (outputFile == NULL) {
+        printf("Error opening file for writing.\n");
+        return;
+    }
 
     /* פותחים את הקובץ לקריאה */
     file = fopen(filename, "r");
@@ -102,16 +105,16 @@ void first_pass(char *filename) {
                 if (label) {
                     add_symbol(label, DC + IC, 0, 0);  /* הוסף את הסמל עבור הנחיית הנתונים */
                 }
-                encode_data(operand, &DC, binaryOutput,&IC);  /* קודד את הנתונים */
+                encode_data(operand, &DC,&IC);  /* קודד את הנתונים */
             } else if (strcmp(instruction, ".string") == 0) {
                 if (label) {
                     add_symbol(label, DC + IC, 0, 0);  /* הוסף את הסמל עבור הנחיית המחרוזת */
                 }
-                encode_string(operand, &DC, binaryOutput, &IC);  /* קודד את המחרוזת */
+                encode_string(operand, &DC, &IC);  /* קודד את המחרוזת */
             } else if (strcmp(instruction, ".entry") == 0) {
                 handle_entry(operand, IC);  /* טיפול בהנחיית entry */
             } else if (strcmp(instruction, ".extern") == 0) {
-                handle_extern(operand,IC);  /* טיפול בהנחיית extern */
+                handle_extern(operand, IC);  /* טיפול בהנחיית extern */
             } else {
                 if (instructionCheck(instruction)) {
                     InstructionInfo info = instructionLength(instruction, &operand1, &operand2, amFile);
@@ -123,17 +126,14 @@ void first_pass(char *filename) {
                     if (label) {
                         add_symbol(label, IC, 0, 0);  /* הוסף את הסמל עבור ההוראה */
                     }
-                    
+
                     /* קידוד ההוראה */
-                    if (encodeInstruction(instruction, operand1, operand2, IC, binaryOutput, amFile) >= 0) {
-                        /* המרת מחרוזת בינארית לערך מספרי */
-                        binaryCode = (unsigned short)strtol(binaryOutput[IC], NULL, 2);
-                        add_code_node(IC, binaryCode); /* הוספת הקוד המקודד לרשימה המקושרת */
+                    if (encodeInstruction(filename,instruction, operand1, operand2, IC, amFile) >= 0) {
+                        /* שמירת המחרוזת הבינארית ברשימה המקושרת */
                     } else {
                         print_external_error(22, amFile);  /* שגיאה: כשל בקידוד ההוראה */
                         errC++;
                     }
-
                     IC += instr_len;  /* הגדלת מונה ההוראות */
                     printf("Instruction: %s, new IC: %d\n", instruction, IC);  /* פלט לניפוי שגיאות */
                 } else {
@@ -144,40 +144,37 @@ void first_pass(char *filename) {
             }
         }
     }
+    SIC = IC;
+    SDC = DC;
 
     if (errC == 0) {
         adjust_data_symbols(IC);
-        create_ent_file(filename, symbol_table);
-        create_ext_file(filename, symbol_table);
     } else if (errC > 0) {
         error_detect = errC;
         print_external_error(21, amFile);
     }
 
+    /*print_binary_code_list(outputFile);*/
+    fclose(outputFile);
+
     free_linked_list(macroTable);
     fclose(file);
 }
-
-
-
-
-
 
 /* פונקציה להוספת 100 לערכים בטבלת הסמלים שאופיינו כנתונים */
 void adjust_data_symbols(int IC) {
     Symbol *current = symbol_table;
     while (current) {
-        if (current->address >= IC_START) {
+        /* בדיקה אם התווית אינה מוגדרת כ-external ורק אז עדכון הכתובת */ 
+        if (!current->is_external && current->address >= IC_START) {
             current->address += IC_BASE;
         }
         current = current->next;
     }
 }
 
-
-
 /* פונקציה לקידוד נתונים בזיכרון */
-void encode_data(const char *operands, int *DC, char binaryOutput[][16], int *IC) {
+void encode_data(const char *operands, int *DC, int *IC) {
     int value;
     const char *p;
     char *endptr;
@@ -206,7 +203,7 @@ void encode_data(const char *operands, int *DC, char binaryOutput[][16], int *IC
 
             /* קידוד הערך הבינארי ושמירה בזיכרון */
             int_to_binary(value, 15, binary);
-            strcpy(binaryOutput[*DC + *IC], binary);
+            add_code_node(*DC + *IC + IC_BASE, binary);  /* הוספת הקוד המקודד לרשימה המקושרת */
             (*DC)++;  /* עדכון מונה הנתונים */
             p = endptr;
         } else {
@@ -222,9 +219,7 @@ void encode_data(const char *operands, int *DC, char binaryOutput[][16], int *IC
     }
 }
 
-
-/* פונקציה לקידוד מחרוזות בזיכרון */
-void encode_string(const char *operand, int *DC, char binaryOutput[][16], int *IC) {
+void encode_string(const char *operand, int *DC, int *IC) {
     int length, i;
     const char *p;
     char binary[16];
@@ -248,17 +243,15 @@ void encode_string(const char *operand, int *DC, char binaryOutput[][16], int *I
         }
         /* קידוד התו ושמירה בזיכרון */
         int_to_binary((int)p[i], 15, binary);
-        strcpy(binaryOutput[*IC + *DC], binary);  /* שמירת הקידוד במיקום הנכון */
+        add_code_node(*IC + *DC+ IC_BASE, binary);  /* הוספת הקוד המקודד לרשימה המקושרת */
         (*DC)++;  /* עדכון מונה הנתונים */
     }
 
     /* קידוד תו סיום המחרוזת */
-    int_to_binary(0, 15, binary);  /* קידוד תו הסיום (0) במקום *IC ולא את *IC עצמו */
-    strcpy(binaryOutput[*IC + *DC], binary);
+    int_to_binary(0, 15, binary);  /* קידוד תו הסיום (0) */
+    add_code_node(*IC + *DC+IC_BASE, binary);  /* הוספת הקוד המקודד לרשימה המקושרת */
     (*DC)++;
 }
-
-
 
 
 InstructionInfo instructionLength(const char *instruction, char **operand1, char **operand2, location amFile) {
@@ -397,8 +390,6 @@ InstructionInfo instructionLength(const char *instruction, char **operand1, char
     return info;
 }
 
-
-
 int is_reserved_keyword(const char *label) {
     int i;
     for (i = 0; i < MAX_KEYWORDS; i++) {
@@ -451,8 +442,6 @@ void handle_extern(const char *label, int address) {
     }
 }
 
-
-
 int is_valid_label(const char *label) {
     int i;
     int len;
@@ -494,7 +483,8 @@ int is_valid_label(const char *label) {
     return 1; /* The label is valid */
 }
 
-int encodeInstruction(const char *instruction, char *operand1, char *operand2, int IC, char binaryOutput[][16], location amFile) {
+int encodeInstruction(const char *filename,const char *instruction, char *operand1, char *operand2, int IC, location amFile) {
+    
     int opcode, srcModeBits = 0, destModeBits = 0, are;
     int srcMode, destMode;
     int encodedValue;
@@ -512,7 +502,7 @@ int encodeInstruction(const char *instruction, char *operand1, char *operand2, i
         /* רק מקודדים את ה-Opcode */
         encodedValue = (opcode << 11) | are;
         int_to_binary(encodedValue, 15, instructionBinary);
-        strcpy(binaryOutput[IC], instructionBinary);
+        add_code_node(IC+IC_BASE, instructionBinary);  /* הוספת הקוד לרשימה */
         return IC + 1;  /* מחזירים את ה-IC המעודכן */
     }
 
@@ -533,7 +523,7 @@ int encodeInstruction(const char *instruction, char *operand1, char *operand2, i
 
     /* המרה לבינארי ושמירה בתא הראשון */
     int_to_binary(encodedValue, 15, instructionBinary);
-    strcpy(binaryOutput[IC], instructionBinary);
+    add_code_node(IC+IC_BASE, instructionBinary);  /* הוספת הקוד לרשימה */ 
     IC++;
 
     /* בדיקה אם שני האופרנדים הם רגיסטרים בשיטות 2 או 3 */
@@ -544,30 +534,29 @@ int encodeInstruction(const char *instruction, char *operand1, char *operand2, i
 
         /* המרה לבינארי ושמירה בתא השני */
         int_to_binary(encodedValue, 15, instructionBinary);
-        strcpy(binaryOutput[IC], instructionBinary);
+        add_code_node(IC+IC_BASE, instructionBinary);  /* הוספת הקוד לרשימה */
         IC++;
     } else {
         /* קידוד אופרנדים בנפרד */
         if (srcMode != -1) {
-            encode_operand_value(operand1, srcMode, 1, binaryOutput[IC], &symbolFlag);
+            encode_operand_value(filename,operand1, srcMode, 1, IC+IC_BASE, &symbolFlag);
             IC++;
         }
 
         if (destMode != -1) {
-            encode_operand_value(operand2, destMode, 0, binaryOutput[IC], &symbolFlag);
+            encode_operand_value(filename ,operand2, destMode, 0, IC+IC_BASE, &symbolFlag);
             IC++;
         }
     }
-
     return IC;  /* החזרת מונה ההוראות המעודכן */
 }
-
-void encode_operand_value(const char *operand, int operandType, int isSource, char *binaryOutput, int *symbolFlag) {
+void encode_operand_value(const char *filename,const char *operand, int operandType, int isSource, int IC, int *symbolFlag) {
     int value = 0;
     int regNum = 0;
     int are = 4;  /* ברירת מחדל: A דלוק */
     int shiftAmount = 0;
     int encodedValue = 0;
+    char binaryOutput[16];
     int i;
     Symbol *sym = NULL;
 
@@ -582,14 +571,15 @@ void encode_operand_value(const char *operand, int operandType, int isSource, ch
         case 1:  /* מיעון ישיר */
             sym = find_symbol(operand);  /* חיפוש התווית בטבלת הסמלים */
             if (sym != NULL) {
-                value = sym->address;  /* קבלת הכתובת של התווית */
                 if (sym->is_external) {
                     are = 1;  /* External (A=0, R=0, E=1) */
+                    encodedValue = are;  /* במקרה של External, אנו מתעלמים מהכתובת */
                 } else {
+                    value = sym->address;  /* קבלת הכתובת של התווית */
                     are = 2;  /* Relative (A=0, R=1, E=0) עבור תוויות מקומיות */
+                    encodedValue = (value & 0xFFF) << 3;
+                    encodedValue |= are;
                 }
-                encodedValue = (value & 0xFFF) << 3;
-                encodedValue |= are;
             } else {
                 /* קודד את כל המחרוזת באפסים */
                 memset(binaryOutput, '0', 15);
@@ -599,16 +589,9 @@ void encode_operand_value(const char *operand, int operandType, int isSource, ch
                 if (symbolFlag) {
                     *symbolFlag = 1;  /* מציין שיש לטפל בתווית במעבר השני */
                 }
+                add_code_node(IC, binaryOutput);  /* שמירת הקוד ברשימה */
                 return;
             }
-
-            /* המרה לבינארי ושמירה במחרוזת */
-            memset(binaryOutput, '0', 15);
-            binaryOutput[15] = '\0';
-            for (i = 0; i < 15; i++) {
-                binaryOutput[14 - i] = (encodedValue & (1 << i)) ? '1' : '0';
-            }
-            return;
             break;
 
         case 2:  /* מיעון אוגר עקיף */
@@ -637,11 +620,9 @@ void encode_operand_value(const char *operand, int operandType, int isSource, ch
     for (i = 0; i < 15; i++) {
         binaryOutput[14 - i] = (encodedValue & (1 << i)) ? '1' : '0';
     }
+
+    add_code_node(IC, binaryOutput);  /* שמירת הקוד ברשימה המקושרת */
 }
-
-
-
-
 
 
 void int_to_binary(int value, int num_bits, char *binaryOutput) {

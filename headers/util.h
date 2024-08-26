@@ -43,10 +43,6 @@ int get_opcode(const char *instruction);
 int set_operand_bits(int operandType, int isSource);
 Symbol* find_symbol(const char *label);
 int is_register(int operand_type, const char *operand);
-void create_ent_file(const char *filename, Symbol *symbol_table);
-void create_ext_file(const char *filename, Symbol *symbol_table);
-void create_ob_file(const char *filename, char binaryOutput[][MAX_BINARY_LENGTH], int IC, int DC);
-void add_to_ext_file(const char *filename, const char *label, int address);
 
 
 
