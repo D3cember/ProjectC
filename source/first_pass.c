@@ -8,6 +8,7 @@
 #include "../headers/first_pass.h"
 #include "../headers/util.h"
 #include "../headers/files_handler.h"
+#include "../headers/data_struct.h"
 int error_detect = 0;
 
 int IC;
@@ -163,10 +164,7 @@ void first_pass(char *filename) {
 
     fclose(outputFile);
     fclose(file);
-    free_macro_content_list(macroTable);
 }
-
-
 
 
 
