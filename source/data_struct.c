@@ -85,7 +85,7 @@ Symbol *symbol_table = NULL;
 int add_symbol(const char *label, int address, int is_external, int is_entry) {
     Symbol *current = symbol_table;
     Symbol *new_symbol = NULL;
-    
+
     while (current != NULL) {
         if (label && current->label && strcmp(current->label, label) == 0) {
             if (current->is_external || current->is_entry) {
@@ -103,7 +103,14 @@ int add_symbol(const char *label, int address, int is_external, int is_entry) {
         return 0;
     }
 
-    new_symbol->label = strdup(label);
+    new_symbol->label = (char *)malloc(strlen(label) + 1);
+    if (!new_symbol->label) {
+        print_internal_error(ERROR_CODE_1); /* Error allocating memory for label */
+        free(new_symbol);
+        return 0;
+    }
+    strcpy(new_symbol->label, label);
+
     new_symbol->address = address;
     new_symbol->is_external = is_external;
     new_symbol->is_entry = is_entry;
@@ -112,6 +119,7 @@ int add_symbol(const char *label, int address, int is_external, int is_entry) {
 
     return 1; /* תווית נוספה בהצלחה */
 }
+
 
 
 
