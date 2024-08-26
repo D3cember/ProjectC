@@ -7,6 +7,7 @@
 #include "../headers/globaldefine.h"
 #include "../headers/first_pass.h"
 #include "../headers/util.h"
+#include "../headers/files_handler.h"
 int error_detect = 0;
 
 int IC;
@@ -49,6 +50,8 @@ void first_pass(char *filename) {
     char *trimmed_line = NULL;
     location amFile;
     int instr_len;
+    InstructionInfo info;  /* הכרזה על משתנה */
+    CodeNode *code_list = NULL;
 
     FILE *outputFile = fopen("output_binary_codes.txt", "w");
     if (outputFile == NULL) {
@@ -56,14 +59,12 @@ void first_pass(char *filename) {
         return;
     }
 
-    /* פותחים את הקובץ לקריאה */
     file = fopen(filename, "r");
     if (!file) {
         print_internal_error(ERROR_CODE_2);
         return;
     }
 
-    /* מעבר על כל השורות בקובץ */
     while (fgets(line, MAX_LINE_LENGTH, file)) {
         lineC++;
         amFile.file_name = filename;
@@ -71,74 +72,72 @@ void first_pass(char *filename) {
 
         operand1 = operand2 = NULL;
 
-        /* דלג על שורות ריקות או תגובות */
         trimmed_line = line;
         if (*trimmed_line == '\0' || *trimmed_line == ';' || *trimmed_line == '\n') {
             continue;
         }
 
-        /* ניתוח השורה */
         analyze_line(trimmed_line, &label, &instruction, &operand, &amFile, &errC);
 
-        /* בדוק אם אין הוראה בשורה */
         if (instruction == NULL) {
             amFile.colo = label;
-            print_external_error(18, amFile);  /* שגיאה: הוראה חסרה */
+            print_external_error(18, amFile);
             errC++;
-            continue;  /* דלג על השורה הנוכחית */
+            continue;
         }
 
-        /* פיצול האופרנדים אם זה אינו אחת ההנחיות המיוחדות */
-        if (operand && strcmp(instruction, ".data") != 0 && strcmp(instruction, ".string") != 0 && strcmp(instruction, ".entry") != 0 && strcmp(instruction, ".extern") != 0) {
+        if (operand && strcmp(instruction, ".data") != 0 && strcmp(instruction, ".string") != 0 &&
+            strcmp(instruction, ".entry") != 0 && strcmp(instruction, ".extern") != 0) {
             operand1 = strtok(operand, ",");
             operand2 = strtok(NULL, ",");
         } else {
             operand1 = operand;
         }
 
-        /* פלט למטרות ניפוי שגיאות */
-        printf("Label: %s, Instruction: %s, Operand1: %s, Operand2: %s\n", label ? label : "NULL", instruction ? instruction : "NULL", operand1 ? operand1 : "NULL", operand2 ? operand2 : "NULL");
+        printf("Label: %s, Instruction: %s, Operand1: %s, Operand2: %s\n",
+               label ? label : "NULL",
+               instruction ? instruction : "NULL",
+               operand1 ? operand1 : "NULL",
+               operand2 ? operand2 : "NULL");
 
-        /* עיבוד ההוראה והאופרנדים */
         if (instruction) {
             if (strcmp(instruction, ".data") == 0) {
                 if (label) {
-                    add_symbol(label, DC + IC, 0, 0);  /* הוסף את הסמל עבור הנחיית הנתונים */
+                    add_symbol(label, DC + IC, 0, 0);
                 }
-                encode_data(operand, &DC,&IC);  /* קודד את הנתונים */
+                encode_data(operand, &DC, &IC, &code_list);  
             } else if (strcmp(instruction, ".string") == 0) {
                 if (label) {
-                    add_symbol(label, DC + IC, 0, 0);  /* הוסף את הסמל עבור הנחיית המחרוזת */
+                    add_symbol(label, DC + IC, 0, 0);
                 }
-                encode_string(operand, &DC, &IC);  /* קודד את המחרוזת */
+                encode_string(operand, &DC, &IC, &code_list); 
             } else if (strcmp(instruction, ".entry") == 0) {
-                handle_entry(operand, IC);  /* טיפול בהנחיית entry */
+                handle_entry(operand, IC);
             } else if (strcmp(instruction, ".extern") == 0) {
-                handle_extern(operand, IC);  /* טיפול בהנחיית extern */
+                handle_extern(operand, IC);
             } else {
                 if (instructionCheck(instruction)) {
-                    InstructionInfo info = instructionLength(instruction, &operand1, &operand2, amFile);
+                    info = instructionLength(instruction, &operand1, &operand2, amFile);
                     if (info.length == -1) {
                         errC++;
                         continue;
                     }
                     instr_len = info.length;
                     if (label) {
-                        add_symbol(label, IC, 0, 0);  /* הוסף את הסמל עבור ההוראה */
+                        add_symbol(label, IC, 0, 0);
                     }
 
-                    /* קידוד ההוראה */
-                    if (encodeInstruction(filename,instruction, operand1, operand2, IC, amFile) >= 0) {
+                    if (encodeInstruction(filename, instruction, operand1, operand2, IC, &code_list, amFile, 0) >= 0) {
                         /* שמירת המחרוזת הבינארית ברשימה המקושרת */
                     } else {
-                        print_external_error(22, amFile);  /* שגיאה: כשל בקידוד ההוראה */
+                        print_external_error(22, amFile);
                         errC++;
                     }
-                    IC += instr_len;  /* הגדלת מונה ההוראות */
-                    printf("Instruction: %s, new IC: %d\n", instruction, IC);  /* פלט לניפוי שגיאות */
+                    IC += instr_len;
+                    printf("Instruction: %s, new IC: %d\n", instruction, IC);
                 } else {
                     amFile.colo = instruction;
-                    print_external_error(20, amFile);  /* שגיאה: הוראה לא ידועה */
+                    print_external_error(20, amFile);
                     errC++;
                 }
             }
@@ -154,12 +153,14 @@ void first_pass(char *filename) {
         print_external_error(21, amFile);
     }
 
-    /*print_binary_code_list(outputFile);*/
     fclose(outputFile);
 
     free_linked_list(macroTable);
     fclose(file);
-}
+} 
+
+
+
 
 /* פונקציה להוספת 100 לערכים בטבלת הסמלים שאופיינו כנתונים */
 void adjust_data_symbols(int IC) {
@@ -174,7 +175,7 @@ void adjust_data_symbols(int IC) {
 }
 
 /* פונקציה לקידוד נתונים בזיכרון */
-void encode_data(const char *operands, int *DC, int *IC) {
+void encode_data(const char *operands, int *DC, int *IC, CodeNode **code_list) {
     int value;
     const char *p;
     char *endptr;
@@ -182,74 +183,62 @@ void encode_data(const char *operands, int *DC, int *IC) {
 
     p = operands;
     while (p != NULL) {
-        /* דלג על רווחים או טאבים */
         while (*p == ' ' || *p == '\t') {
             p++;
         }
 
-        /* בדיקת מספרים */
         if (*p == '+' || *p == '-' || (*p >= '0' && *p <= '9')) {
             value = strtol(p, &endptr, 10);
             if (p == endptr) {
-                /* שגיאה אם הערך אינו תקין */
                 print_internal_error(ERROR_CODE_22);
                 return;
             }
             
-            /* אם הערך שלילי, מבצעים המרה למשלים ל-2 */
             if (value < 0) {
-                value = (1 << 15) + value;  /* מוסיפים את הערך למסקה של 12 ביטים */
+                value = (1 << 15) + value;
             }
 
-            /* קידוד הערך הבינארי ושמירה בזיכרון */
             int_to_binary(value, 15, binary);
-            add_code_node(*DC + *IC + IC_BASE, binary);  /* הוספת הקוד המקודד לרשימה המקושרת */
-            (*DC)++;  /* עדכון מונה הנתונים */
+            add_code_node(*DC + *IC + IC_BASE, binary, code_list);
+            (*DC)++;
             p = endptr;
         } else {
-            /* שגיאה אם יש תו שאינו מספרי */
             print_internal_error(ERROR_CODE_22);
             return;
         }
 
-        /* מצא את הפסיק הבא והתקדם */
         p = strchr(p, ',');
         if (p != NULL) p++;
-        else break;  /* יציאה מהלולאה אם אין יותר פסיקים */
+        else break;
     }
 }
 
-void encode_string(const char *operand, int *DC, int *IC) {
+void encode_string(const char *operand, int *DC, int *IC, CodeNode **code_list) {
     int length, i;
     const char *p;
     char binary[16];
 
     p = operand;
-    /* דלג על רווחים או טאבים */
     while (*p == ' ' || *p == '\t') {
         p++;
     }
     if (*p == '\"') {
-        p++;  /* דלג על מרכאות פתיחה */
+        p++;
     }
 
-    length = strlen(p);  /* קבלת אורך המחרוזת */
+    length = strlen(p);
     for (i = 0; i < length && p[i] != '\"'; i++) {
-        /* בדוק אם התו נמצא בתחום התקין */
         if ((p[i] < 32 || p[i] > 126) && p[i] != '\t') {
-            /* שגיאה אם יש תו לא תקין */
             print_internal_error(ERROR_CODE_23);
             return;
         }
-        /* קידוד התו ושמירה בזיכרון */
         int_to_binary((int)p[i], 15, binary);
-        add_code_node(*IC + *DC+ IC_BASE, binary);  /* הוספת הקוד המקודד לרשימה המקושרת */
-        (*DC)++;  /* עדכון מונה הנתונים */
+        add_code_node(*IC + *DC + IC_BASE, binary, code_list);
+        (*DC)++;
     }
 
-    /* קידוד תו סיום המחרוזת */
-    int_to_binary(0, 15, binary);  /* קידוד תו הסיום (0) */
-    add_code_node(*IC + *DC+IC_BASE, binary);  /* הוספת הקוד המקודד לרשימה המקושרת */
+    int_to_binary(0, 15, binary);
+    add_code_node(*IC + *DC + IC_BASE, binary, code_list);
     (*DC)++;
 }
 
@@ -409,17 +398,17 @@ void handle_entry(const char *label, int address) {
                 return;
             }
             sym->is_entry = 1;  /* Update the symbol to be an entry */
-            sym->address = address; /* Update the address */
             return;
         }
         sym = sym->next;
     }
 
-    /* If the label is not found, add it as an entry */
+    /* If the label is not found, add it as an entry without changing the address */
     if (!add_symbol(label, address, 0, 1)) {
         print_internal_error(ERROR_CODE_16); /* Error: Label already exists */
     }
 }
+
 
 void handle_extern(const char *label, int address) {
     Symbol *sym = symbol_table;
@@ -430,17 +419,18 @@ void handle_extern(const char *label, int address) {
                 return;
             }
             sym->is_external = 1;  /* Update the symbol to be external */
-            sym->address = address; /* Update the address */
+            sym->address = 0; /* External symbols should have address 0 */
             return;
         }
         sym = sym->next;
     }
 
-    /* If the label is not found, add it as an external symbol */
-    if (!add_symbol(label, address, 1, 0)) {
+    /* If the label is not found, add it as an external symbol with address 0 */
+    if (!add_symbol(label, 0, 1, 0)) {
         print_internal_error(ERROR_CODE_17); /* Error: Label already exists */
     }
 }
+
 
 int is_valid_label(const char *label) {
     int i;
@@ -483,147 +473,134 @@ int is_valid_label(const char *label) {
     return 1; /* The label is valid */
 }
 
-int encodeInstruction(const char *filename,const char *instruction, char *operand1, char *operand2, int IC, location amFile) {
-    
+int encodeInstruction(const char *filename, const char *instruction, char *operand1, char *operand2, int IC, CodeNode **code_list, location amFile, int is_second_pass) {
     int opcode, srcModeBits = 0, destModeBits = 0, are;
     int srcMode, destMode;
     int encodedValue;
     char instructionBinary[16];
-    int symbolFlag = 0;  /* נשתמש בדגל כדי לדעת אם יש תווית שמצריכה טיפול במעבר השני */
+    int symbolFlag = 0;
 
-    are = 4;  /* ערך ברירת מחדל */
+    are = 4;
 
-    /* השגת ה-Opcode */
     opcode = get_opcode(instruction);
-    if (opcode == -1) return -1;  /* Opcode לא חוקי */
+    if (opcode == -1) return -1;
 
-    /* אם ההוראה היא stop או rts, אין צורך לאופרנדים */
     if (strcmp(instruction, "stop") == 0 || strcmp(instruction, "rts") == 0) {
-        /* רק מקודדים את ה-Opcode */
         encodedValue = (opcode << 11) | are;
         int_to_binary(encodedValue, 15, instructionBinary);
-        add_code_node(IC+IC_BASE, instructionBinary);  /* הוספת הקוד לרשימה */
-        return IC + 1;  /* מחזירים את ה-IC המעודכן */
+        add_code_node(IC + IC_BASE, instructionBinary, code_list);
+        return IC + 1;
     }
 
-    /* השגת סוגי האופרנדים */
     srcMode = operand1 ? get_operand_type(operand1) : -1;
     destMode = operand2 ? get_operand_type(operand2) : -1;
 
-    /* קידוד הביטים עבור סוגי המיעון */
     if (srcMode != -1) {
-        srcModeBits = set_operand_bits(srcMode, 1);  /* קידוד עבור מקור */
+        srcModeBits = set_operand_bits(srcMode, 1);
     }
     if (destMode != -1) {
-        destModeBits = set_operand_bits(destMode, 0);  /* קידוד עבור יעד */
+        destModeBits = set_operand_bits(destMode, 0);
     }
 
-    /* שילוב ה-Opcode עם סוגי המיעון */
     encodedValue = (opcode << 11) | srcModeBits | destModeBits | are;
 
-    /* המרה לבינארי ושמירה בתא הראשון */
     int_to_binary(encodedValue, 15, instructionBinary);
-    add_code_node(IC+IC_BASE, instructionBinary);  /* הוספת הקוד לרשימה */ 
+    add_code_node(IC + IC_BASE, instructionBinary, code_list);
     IC++;
 
-    /* בדיקה אם שני האופרנדים הם רגיסטרים בשיטות 2 או 3 */
     if ((srcMode == 2 || srcMode == 3) && (destMode == 2 || destMode == 3)) {
         int regNumSrc = (srcMode == 2) ? operand1[2] - '0' : operand1[1] - '0';
         int regNumDest = (destMode == 2) ? operand2[2] - '0' : operand2[1] - '0';
         encodedValue = (regNumSrc << 6) | (regNumDest << 3) | are;
 
-        /* המרה לבינארי ושמירה בתא השני */
         int_to_binary(encodedValue, 15, instructionBinary);
-        add_code_node(IC+IC_BASE, instructionBinary);  /* הוספת הקוד לרשימה */
+        add_code_node(IC + IC_BASE, instructionBinary, code_list);
         IC++;
     } else {
-        /* קידוד אופרנדים בנפרד */
         if (srcMode != -1) {
-            encode_operand_value(filename,operand1, srcMode, 1, IC+IC_BASE, &symbolFlag);
+            encode_operand_value(filename, operand1, srcMode, 1, IC + IC_BASE, &symbolFlag, *code_list, is_second_pass);
             IC++;
         }
 
         if (destMode != -1) {
-            encode_operand_value(filename ,operand2, destMode, 0, IC+IC_BASE, &symbolFlag);
+            encode_operand_value(filename, operand2, destMode, 0, IC + IC_BASE, &symbolFlag, *code_list, is_second_pass);
             IC++;
         }
     }
-    return IC;  /* החזרת מונה ההוראות המעודכן */
+    return IC;
 }
-void encode_operand_value(const char *filename,const char *operand, int operandType, int isSource, int IC, int *symbolFlag) {
+
+
+void encode_operand_value(const char *filename, const char *operand, int operandType, int isSource, int IC, int *symbolFlag, CodeNode *code_list, int is_second_pass) {
     int value = 0;
     int regNum = 0;
-    int are = 4;  /* ברירת מחדל: A דלוק */
+    int are = 4;
     int shiftAmount = 0;
     int encodedValue = 0;
     char binaryOutput[16];
     int i;
     Symbol *sym = NULL;
 
-    /* ניתוח סוג המיעון וביצוע קידוד מתאים */
     switch (operandType) {
         case 0:  /* מיעון מיידי */
-            value = atoi(&operand[1]);  /* לדוגמה #5 */
-            are = 4;  /* Immediate הוא תמיד Absolute (A=1, R=0, E=0) */
-            encodedValue = (value & 0xFFF) << 3;  /* 12 ביטים מ-3 עד 14 */
+            value = atoi(&operand[1]);
+            are = 4;
+            encodedValue = (value & 0xFFF) << 3;
             break;
 
         case 1:  /* מיעון ישיר */
-            sym = find_symbol(operand);  /* חיפוש התווית בטבלת הסמלים */
+            sym = find_symbol(operand);
             if (sym != NULL) {
                 if (sym->is_external) {
-                    are = 1;  /* External (A=0, R=0, E=1) */
-                    encodedValue = are;  /* במקרה של External, אנו מתעלמים מהכתובת */
+                    are = 1;
+                    encodedValue = are;
+                    if (is_second_pass) {
+                        update_externals_file(filename, sym->label, IC);
+                    }
                 } else {
-                    value = sym->address;  /* קבלת הכתובת של התווית */
-                    are = 2;  /* Relative (A=0, R=1, E=0) עבור תוויות מקומיות */
+                    value = sym->address;
+                    are = 2;
                     encodedValue = (value & 0xFFF) << 3;
                     encodedValue |= are;
                 }
             } else {
-                /* קודד את כל המחרוזת באפסים */
                 memset(binaryOutput, '0', 15);
                 binaryOutput[15] = '\0';
 
-                /* סימון שהתווית לא נמצאה ויש לעדכן אותה במעבר השני */
                 if (symbolFlag) {
-                    *symbolFlag = 1;  /* מציין שיש לטפל בתווית במעבר השני */
+                    *symbolFlag = 1;
                 }
-                add_code_node(IC, binaryOutput);  /* שמירת הקוד ברשימה */
+                add_code_node(IC, binaryOutput, &code_list);
                 return;
             }
             break;
 
         case 2:  /* מיעון אוגר עקיף */
-            regNum = operand[2] - '0';  /* לדוגמה *r3 */
-            are = 4;  /* Register Indirect הוא תמיד Absolute (A=1, R=0, E=0) */
-            shiftAmount = isSource ? 6 : 3;  /* מקור בביטים 8-6, יעד בביטים 5-3 */
+            regNum = operand[2] - '0';
+            are = 4;
+            shiftAmount = isSource ? 6 : 3;
             encodedValue = regNum << shiftAmount;
             break;
 
         case 3:  /* מיעון אוגר ישיר */
-            regNum = operand[1] - '0';  /* לדוגמה r3 */
-            are = 4;  /* Register Direct הוא תמיד Absolute (A=1, R=0, E=0) */
-            shiftAmount = isSource ? 6 : 3;  /* מקור בביטים 8-6, יעד בביטים 5-3 */
+            regNum = operand[1] - '0';
+            are = 4;
+            shiftAmount = isSource ? 6 : 3;
             encodedValue = regNum << shiftAmount;
             break;
     }
 
-    /* שילוב ה-A/R/E עם הערך */
     encodedValue |= are;
 
-    /* איפוס המחרוזת הבינארית */
     memset(binaryOutput, '0', 15);
     binaryOutput[15] = '\0';
 
-    /* המרה לבינארי ושמירה במחרוזת */
     for (i = 0; i < 15; i++) {
         binaryOutput[14 - i] = (encodedValue & (1 << i)) ? '1' : '0';
     }
 
-    add_code_node(IC, binaryOutput);  /* שמירת הקוד ברשימה המקושרת */
+    add_code_node(IC, binaryOutput, &code_list);
 }
-
 
 void int_to_binary(int value, int num_bits, char *binaryOutput) {
     int i;

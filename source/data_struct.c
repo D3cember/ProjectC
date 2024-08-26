@@ -117,8 +117,7 @@ int add_symbol(const char *label, int address, int is_external, int is_entry) {
 
 CodeNode *code_list = NULL; /* רשימה ראשית */
 
-
-void add_code_node(int address, const char *binary_code) {
+void add_code_node(int address, const char *binary_code, CodeNode **code_list) {
     CodeNode *new_node = (CodeNode *)malloc(sizeof(CodeNode));
     if (!new_node) {
         print_internal_error(ERROR_CODE_3);
@@ -129,17 +128,17 @@ void add_code_node(int address, const char *binary_code) {
     strcpy(new_node->binary_code, binary_code);
     new_node->next = NULL;
 
-    if (code_list == NULL) {
-        code_list = new_node;
+    if (*code_list == NULL) {
+        *code_list = new_node;
     } else {
-        CodeNode *current = code_list;
+        CodeNode *current = *code_list;
         while (current->next != NULL) {
             current = current->next;
         }
         current->next = new_node;
     }
-    printf("Node added: Address: %d, Binary Code: %s\n", address, binary_code);  
 }
+
 
 
 

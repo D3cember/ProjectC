@@ -52,7 +52,7 @@ void *handle_malloc(size_t size);
 int add_symbol(const char *label, int address, int is_external, int is_entry);
 void print_symbol_table(const char *filename);
 void free_symbol_table(void);
-void add_code_node(int address, const char *binary_code);
+void add_code_node(int address, const char *binary_code, CodeNode **code_list);
 void print_binary_code_list(FILE *file);
 
 

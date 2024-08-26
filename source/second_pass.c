@@ -24,8 +24,8 @@ void second_pass(char *filename, char *fileNameAm) {
     char *operand2 = NULL;
     location amFile;
     InstructionInfo info;
-    Symbol *sym1;
-    Symbol *sym2;
+    CodeNode *code_list = NULL;  
+
 
     fileAM = fopen(fileNameAm, "r");
     if (!fileAM) {
@@ -40,18 +40,17 @@ void second_pass(char *filename, char *fileNameAm) {
 
         operand1 = operand2 = NULL;
 
-        /* דילוג על שורות ריקות ותגובות */
         if (*line == '\0' || *line == ';' || *line == '\n') {
             continue;
         }
 
-        /* ניתוח השורה */
         analyze_line(line, &label, &instruction, &operand, &amFile, &errC);
 
         if (instruction == NULL) {
-            continue;  /* דילוג על השורה אם אין הוראה */
+            continue;
         }
-        if (operand && strcmp(instruction, ".data") != 0 && strcmp(instruction, ".string") != 0 && strcmp(instruction, ".entry") != 0 && strcmp(instruction, ".extern") != 0) {
+        if (operand && strcmp(instruction, ".data") != 0 && strcmp(instruction, ".string") != 0 &&
+            strcmp(instruction, ".entry") != 0 && strcmp(instruction, ".extern") != 0) {
             operand1 = strtok(operand, ",");
             operand2 = strtok(NULL, ",");
         } else {
@@ -59,13 +58,13 @@ void second_pass(char *filename, char *fileNameAm) {
         }
 
         if (strcmp(instruction, ".data") == 0) {
-            encode_data(operand, &DC, &IC);  /* קידוד מחדש של הוראת data */
+            encode_data(operand, &DC, &IC, &code_list);
             continue;
         } else if (strcmp(instruction, ".string") == 0) {
-            encode_string(operand, &DC, &IC);  /* קידוד מחדש של הוראת string */
+            encode_string(operand, &DC, &IC, &code_list);
             continue;
         } else if (strcmp(instruction, ".extern") == 0 || strcmp(instruction, ".entry") == 0) {
-            continue;  /* דילוג על הוראות לא רלוונטיות */
+            continue;
         } else {
             info = instructionLength(instruction, &operand1, &operand2, amFile);
             if (info.length == -1) {
@@ -73,32 +72,8 @@ void second_pass(char *filename, char *fileNameAm) {
                 continue;
             }
 
-            /* בדיקה אם אופרנד כלשהו הוא תווית */
-            if (operand1 != NULL && get_operand_type(operand1) == 1) {
-                sym1 = find_symbol(operand1);
-                if (sym1 != NULL) {
-                    if (sym1->is_entry) {
-                        update_entries_file(fileNameAm, sym1->label, sym2->address);
-                    }
-                    if (sym1->is_external) {
-                        update_externals_file(fileNameAm, sym1->label, IC + 100);
-                    }
-                }
-            }
-
-            if (operand2 != NULL && get_operand_type(operand2) == 1) {
-                sym2 = find_symbol(operand2);
-                if (sym2 != NULL) {
-                    if (sym2->is_entry) {
-                        update_entries_file(fileNameAm, sym2->label, sym2->address);
-                    }
-                    if (sym2->is_external) {
-                        update_externals_file(fileNameAm, sym2->label, IC + 101);
-                    }
-                }
-            }
-
-            if (encodeInstruction(filename,instruction, operand1, operand2, IC, amFile) >= 0) {
+            /* קידוד ההוראה והאופרנדים */
+            if (encodeInstruction(fileNameAm, instruction, operand1, operand2, IC, &code_list, amFile, 1) >= 0) {
                 IC += info.length;
             } else {
                 print_external_error(22, amFile);
@@ -106,11 +81,13 @@ void second_pass(char *filename, char *fileNameAm) {
             }
         }
     }
-    /* יצירת קובצי הפלט לאחר המעבר השני */
-    create_ob_file(filename, *code_list, SIC, SDC);
+    create_entry_file(filename,symbol_table);
+    create_ob_file(filename, code_list, SIC, SDC);
 
     fclose(fileAM);
-
 }
+
+
+
 
 
