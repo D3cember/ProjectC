@@ -6,7 +6,7 @@
 #include "../headers/globaldefine.h"
 #include "../headers/errors.h"
 
-
+int error_detect;
 LinkedListOfMacro *macroTable = NULL;
 
 
@@ -111,8 +111,9 @@ void process_file(char *source_file, char *output_file_name)
             {
                 if (!check_endmacr_format(line_buffer))
                 {
-                    print_internal_error(ERROR_CODE_10);
+                    print_internal_error(ERROR_CODE_3);
                     print_internal_error(ERROR_CODE_29);
+                    error_detect++;
                     return;
                 }
                 is_in_macro = 0;
@@ -151,6 +152,7 @@ void process_file(char *source_file, char *output_file_name)
                     output_location->colo = macro_name;
                     print_external_error(9, *output_location);
                     print_internal_error(ERROR_CODE_39);
+                    error_detect++;
                     return;
                 }
             }
@@ -160,6 +162,7 @@ void process_file(char *source_file, char *output_file_name)
                 {
                     print_internal_error(ERROR_CODE_9);
                     print_internal_error(ERROR_CODE_29);
+                    error_detect++;
                     return;
                 }
                 addNode(macroTable, line_buffer);
@@ -177,6 +180,7 @@ void process_file(char *source_file, char *output_file_name)
     fclose(input_file);
     fclose(output_file);
     free(output_location);
+    
 }
 
 

@@ -13,12 +13,12 @@ Error errors[] = {
         {ERROR_CODE_0,"No Error"},
         {ERROR_CODE_1,"Failed to dynamically allocate memory"},/* USED IN DATASTRUCT,*/
         {ERROR_CODE_2,"Error open file , procced to next input file."},
-        {ERROR_CODE_3,"endmacr format is invaild."},
+        {ERROR_CODE_3,"File contain errors, procced for the next input file."},
         {-1,            ""},
         {-1,            ""},
         {-1,            ""},
         {-1,            ""},
-        {-1,            ""},
+        {ERROR_CODE_8,"endmacr format is invaild."},
         {ERROR_CODE_9,"Macro declare is invaild"},/* used in Preproc when endmacr has extra text after.*/
         {ERROR_CODE_10,"Macro name invaild."},/* used in pre proccesor*/
         {ERROR_CODE_11,"Macro name cannot be reserved name"},
