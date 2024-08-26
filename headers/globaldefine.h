@@ -7,8 +7,6 @@
 
 #define MAX_LINE_LENGTH 80
 
-#define MACRO_NAME_LENGTH 31
-
 #define MAX_KEYWORDS 30
 
 #define OPERATION_AMMOUNT 16

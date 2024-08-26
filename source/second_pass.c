@@ -17,14 +17,16 @@ void second_pass(char *filename, char *fileNameAm) {
     char line[MAX_LINE_LENGTH];
     int lineC = 0;
     int errC = 0;
+    int analysis_result;
     char *label = NULL;
     char *instruction = NULL;
     char *operand = NULL;
     char *operand1 = NULL;
     char *operand2 = NULL;
+    char *trimmed_line;
     location amFile;
     InstructionInfo info;
-    CodeNode *code_list = NULL;  
+    CodeNode *code_list = NULL; 
 
 
     fileAM = fopen(fileNameAm, "r");
@@ -32,19 +34,27 @@ void second_pass(char *filename, char *fileNameAm) {
         print_internal_error(ERROR_CODE_2);
         return;
     }
-
+    
     while (fgets(line, MAX_LINE_LENGTH, fileAM)) {
         lineC++;
         amFile.file_name = filename;
         amFile.line_num = lineC;
 
         operand1 = operand2 = NULL;
+        trimmed_line = line;
 
-        if (*line == '\0' || *line == ';' || *line == '\n') {
-            continue;
+        /* בדוק אם השורה ריקה או שהיא הערה */
+        while (*trimmed_line == ' ' || *trimmed_line == '\t' || *trimmed_line == '\n') trimmed_line++;
+        if (*trimmed_line == ';' || *trimmed_line == '\0') {
+            continue;  /* המשך לשורה הבאה אם מדובר בשורת הערה או שורה ריקה */
         }
-
-        analyze_line(line, &label, &instruction, &operand, &amFile, &errC);
+        /* ניתוח השורה */
+        analysis_result = analyze_line(trimmed_line, &label, &instruction, &operand, &amFile, &errC);
+        
+        /* בדוק אם השורה הייתה שורת הערה */
+        if (analysis_result == 1) {
+            continue;  /* סרוק את השורה החדשה */
+        }
 
         if (instruction == NULL) {
             continue;
@@ -85,6 +95,10 @@ void second_pass(char *filename, char *fileNameAm) {
     create_ob_file(filename, code_list, SIC, SDC);
 
     fclose(fileAM);
+    free_linked_list(macroTable);
+    free_symbol_table();
+    free_CodeNode_list();
+
 }
 
 

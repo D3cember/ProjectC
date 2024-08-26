@@ -7,6 +7,9 @@
 #include "../headers/errors.h"
 
 
+CodeNode *code_list = NULL; /* רשימה ראשית */
+
+
 void addNode(LinkedListOfMacro *macroTable , char *line) { /*createing node*/ 
     if(macroTable->head==NULL)
     {
@@ -48,29 +51,36 @@ void add_macro_content(NodeOnList *macro, char *line)
 }
 
 
-void free_macro_content_list(LinkedListOfMacro_Content *contentList) {
-    NodeOfMacroContentList *current = contentList->head;
+void free_macro_content_list(LinkedListOfMacro_Content *macroTable) {
+    NodeOfMacroContentList *current = macroTable->head;
     NodeOfMacroContentList *nextNode;
 
-    while(current != NULL){
+    while (current != NULL) {
         nextNode = current->next;
-        free(current);
+        free(current); 
         current = nextNode;
     }
+
+    free(macroTable);
 }
 
-void free_linked_list(LinkedListOfMacro *list){
+void free_linked_list(LinkedListOfMacro *list) {
     NodeOnList *temp = list->head;
     NodeOnList *nextNode;
-    while(temp != NULL){
+
+    while (temp != NULL) {
         nextNode = temp->next;
+
         free_macro_content_list(temp->Macro_content);
-        free(temp->Macro_content);
-        free(temp->name);
-        free(temp);
+        free(temp->Macro_content); 
+        free(temp->name); 
+        free(temp);  
         temp = nextNode;
     }
+
+    free(list);
 }
+
 
 void *handle_malloc(size_t size) {
     void *ptr = malloc(size);
@@ -86,6 +96,7 @@ int add_symbol(const char *label, int address, int is_external, int is_entry) {
     Symbol *current = symbol_table;
     Symbol *new_symbol = NULL;
 
+    /* חיפוש תווית קיימת */
     while (current != NULL) {
         if (label && current->label && strcmp(current->label, label) == 0) {
             if (current->is_external || current->is_entry) {
@@ -97,6 +108,7 @@ int add_symbol(const char *label, int address, int is_external, int is_entry) {
         current = current->next;
     }
 
+    /* הקצאת זיכרון לצומת חדש */
     new_symbol = (Symbol *)malloc(sizeof(Symbol));
     if (!new_symbol) {
         print_internal_error(ERROR_CODE_1); /* Error allocating memory */
@@ -115,15 +127,19 @@ int add_symbol(const char *label, int address, int is_external, int is_entry) {
     new_symbol->is_external = is_external;
     new_symbol->is_entry = is_entry;
     new_symbol->next = symbol_table;
+    new_symbol->prev = NULL; /* הצומת החדש הוא הראשון ולכן אין לו קודם */
+
+    /* אם יש צומת קיים ברשימה, יש לעדכן את המצביע prev שלו */
+    if (symbol_table != NULL) {
+        symbol_table->prev = new_symbol;
+    }
+
+    /* עדכון ראש הרשימה לצומת החדש */
     symbol_table = new_symbol;
 
     return 1; /* תווית נוספה בהצלחה */
 }
 
-
-
-
-CodeNode *code_list = NULL; /* רשימה ראשית */
 
 void add_code_node(int address, const char *binary_code, CodeNode **code_list) {
     CodeNode *new_node = (CodeNode *)malloc(sizeof(CodeNode));
@@ -148,48 +164,6 @@ void add_code_node(int address, const char *binary_code, CodeNode **code_list) {
 }
 
 
-
-
-
-
-
-
-
-
-
-  
-
-/*------------------- TEST ----------------------- */
-
-void print_symbol_table(const char *filename) {
-    FILE *file;
-    Symbol *current; 
-
-    file = fopen(filename, "w");
-    if (!file) {
-        perror("Failed to open file for writing");
-        return;
-    }
-
-    current = symbol_table;
-    while (current) {
-        fprintf(file, "%s\t%d\n", current->label, current->address);
-        current = current->next;
-    }
-
-    fclose(file);
-}
-void print_binary_code_list(FILE *file) {
-    CodeNode *current = code_list;
-    fprintf(file, "----- Printing all binary codes in the linked list -----\n");
-    while (current != NULL) {
-        fprintf(file, "Address: %d, Binary Code: %s\n", current->address, current->binary_code);
-        current = current->next;
-    }
-    fprintf(file, "----- End of the linked list -----\n");
-}
-
-
 void free_symbol_table(void) {
     Symbol *current = symbol_table;
     while (current) {
@@ -200,5 +174,16 @@ void free_symbol_table(void) {
     }
     symbol_table = NULL;
 }
-/*------------------- TEST ----------------------- */
+
+void free_CodeNode_list(void) {
+    CodeNode *list = code_list;
+    while (list) {
+        CodeNode *to_free = list;
+        list = list->next;
+        free(to_free->binary_code);  
+        free(to_free);                
+    }
+    code_list = NULL;
+}
+ 
 

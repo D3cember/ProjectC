@@ -81,7 +81,14 @@ void create_entry_file(const char *filename, Symbol *symbol_table) {
         return;
     }
 
-    for (sym = symbol_table; sym != NULL; sym = sym->next) {
+    /* מציאת הצומת האחרון ברשימה (עם הכתובת הגבוהה ביותר) */
+    sym = symbol_table;
+    while (sym && sym->next != NULL) {
+        sym = sym->next;
+    }
+
+    /* הדפסת הצמתים בסדר עולה מהסוף להתחלה */
+    for (; sym != NULL; sym = sym->prev) {
         if (sym->is_entry) {
             fprintf(entry_file, "%s %03d\n", sym->label, sym->address);
         }
@@ -90,6 +97,9 @@ void create_entry_file(const char *filename, Symbol *symbol_table) {
     fclose(entry_file);
     free(entry_filename);
 }
+
+
+
 
 void create_ext_file(const char *base_filename, Symbol *symbol_table) {
     char *ext_filename;
@@ -151,7 +161,7 @@ void create_ob_file(const char *filename, CodeNode *code_list, int IC, int DC) {
         return;
     }
 
-    fprintf(ob_file, "%5d%2d\n", IC, DC); 
+    fprintf(ob_file, "%5d %2d\n", IC, DC); 
 
     for (current = code_list; current != NULL; current = current->next) {
         int octal_value = binary_to_octal(current->binary_code);

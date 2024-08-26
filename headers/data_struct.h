@@ -32,9 +32,11 @@ typedef struct Symbol {
     int is_external;
     int is_entry;
     struct Symbol *next;
+    struct Symbol *prev;
 } Symbol;
 
 extern Symbol *symbol_table;
+extern LinkedListOfMacro *macroTable;
 
 typedef struct CodeNode {
     int address;
@@ -46,14 +48,13 @@ typedef struct CodeNode {
 
 void addNode(LinkedListOfMacro* macroTable , char *line); /*createing node*/ 
 void add_macro_content(NodeOnList *macro, char *line);
-void free_macro_content_list(LinkedListOfMacro_Content *macroTabble);
+void free_macro_content_list(LinkedListOfMacro_Content *macroTable);
 void free_linked_list(LinkedListOfMacro *list);
 void *handle_malloc(size_t size);
 int add_symbol(const char *label, int address, int is_external, int is_entry);
-void print_symbol_table(const char *filename);
 void free_symbol_table(void);
 void add_code_node(int address, const char *binary_code, CodeNode **code_list);
-void print_binary_code_list(FILE *file);
+void free_CodeNode_list(void);
 
 
 

@@ -18,7 +18,7 @@ const char *instr[16];
 void encode_data(const char *operands, int *DC, int *IC, CodeNode **code_list);
 void encode_string(const char *operand, int *DC, int *IC, CodeNode **code_list);
 InstructionInfo instructionLength(const char *instruction, char **operand1, char **operand2, location amFile);
-int is_reserved_keyword(const char *label);
+int is_reserved_keyword(char *label);
 void handle_extern(const char *label,int address);
 void handle_entry(const char *label, int address);
 int is_valid_label(const char *label);

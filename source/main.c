@@ -8,7 +8,6 @@
 
 
 int main(int argc , char *argv[]) {
-    const char *symbol_table_filename = "symbol_table.txt"; /* FOR TEST AND DEBUG ONLY*/
     int i;
     char fileName[30];
     char fileNameAss[30];
@@ -47,10 +46,6 @@ int main(int argc , char *argv[]) {
             printf("----- Starting Second Pass stage ------\n");
             second_pass(fileName,fileNameAm);
             printf("----- End of Second Pass stage ------\n");
-
-            /* ------ FOR TESTING --------   */
-            print_symbol_table(symbol_table_filename);
-            free_symbol_table();
 
 
         }

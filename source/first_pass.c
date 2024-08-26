@@ -42,14 +42,15 @@ void first_pass(char *filename) {
     int DC = DC_START;
     int lineC = 0;
     int errC = 0;
+    int instr_len;
+    int analysis_result;
     char *label = NULL;
     char *instruction = NULL;
     char *operand = NULL;
     char *operand1 = NULL;
     char *operand2 = NULL;
-    char *trimmed_line = NULL;
+    char *trimmed_line;
     location amFile;
-    int instr_len;
     InstructionInfo info;  /* הכרזה על משתנה */
     CodeNode *code_list = NULL;
 
@@ -71,13 +72,20 @@ void first_pass(char *filename) {
         amFile.line_num = lineC;
 
         operand1 = operand2 = NULL;
-
         trimmed_line = line;
-        if (*trimmed_line == '\0' || *trimmed_line == ';' || *trimmed_line == '\n') {
-            continue;
-        }
 
-        analyze_line(trimmed_line, &label, &instruction, &operand, &amFile, &errC);
+        /* בדוק אם השורה ריקה או שהיא הערה */
+        while (*trimmed_line == ' ' || *trimmed_line == '\t' || *trimmed_line == '\n') trimmed_line++;
+        if (*trimmed_line == ';' || *trimmed_line == '\0') {
+            continue;  /* המשך לשורה הבאה אם מדובר בשורת הערה או שורה ריקה */
+        }
+        /* ניתוח השורה */
+        analysis_result = analyze_line(trimmed_line, &label, &instruction, &operand, &amFile, &errC);
+        
+        /* בדוק אם השורה הייתה שורת הערה */
+        if (analysis_result == 1) {
+            continue;  /* סרוק את השורה החדשה */
+        }
 
         if (instruction == NULL) {
             amFile.colo = label;
@@ -154,10 +162,10 @@ void first_pass(char *filename) {
     }
 
     fclose(outputFile);
-
-    free_linked_list(macroTable);
     fclose(file);
-} 
+    free_macro_content_list(macroTable);
+}
+
 
 
 
@@ -379,7 +387,7 @@ InstructionInfo instructionLength(const char *instruction, char **operand1, char
     return info;
 }
 
-int is_reserved_keyword(const char *label) {
+int is_reserved_keyword(char *label) {
     int i;
     for (i = 0; i < MAX_KEYWORDS; i++) {
         if (strcmp(label, reserved_keywords[i]) == 0) {

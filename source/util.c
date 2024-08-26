@@ -12,31 +12,31 @@
 
 const char *reserved_keywords[MAX_KEYWORDS] = {"mov","cmp","add","sub","lea","clr","not","inc","dec","jmp","bne","red","prn","jsr","rts","stop",".data",".string",".entry",".extern","r0","r1","r2","r3","r4","r5","r6","r7","macr","endmacr"};
 char* Macro_name(const char *line) {
-    const char *macr = "macr";
-    const char *ptr = line;
+    const char *macro_declare = "macr";
+    const char *temp_line = line;
     char *identifier = (char*)malloc(MAX_LINE_LENGTH * sizeof(char));
-    char *id_ptr = identifier;
+    char *temp_id = identifier;
 
     /*Skip leading whitespaces*/ 
-    while (isspace(*ptr)) {
-        ptr++;
+    while (isspace(*temp_line)) {
+        temp_line++;
     }
 
     /*Check if "macr" is present*/ 
-    if (strncmp(ptr, macr, strlen(macr)) == 0) {
-        ptr += strlen(macr);
+    if (strncmp(temp_line, macro_declare, strlen(macro_declare)) == 0) {
+        temp_line += strlen(macro_declare);
     }
 
     /*Skip whitespaces after "macr"*/ 
-    while (isspace(*ptr)) {
-        ptr++;
+    while (isspace(*temp_line)) {
+        temp_line++;
     }
 
     /*Copy the identifier*/ 
-    while (*ptr != '\n' && !isspace(*ptr)) {
-        *id_ptr++ = *ptr++;
+    while (*temp_line != '\n' && !isspace(*temp_line)) {
+        *temp_id++ = *temp_line++;
     }
-    *id_ptr = '\0';
+    *temp_id = '\0';
     
 
     return identifier;
@@ -64,71 +64,76 @@ int is_macro_call(const char *line) {
     return (space == NULL && tab == NULL);
 }
 int check_macro_declaration_format(const char *line) {
-    const char *macr = "macr";
-    const char *ptr = line;
+    const char *Macroformat = "macr";
+    const char *temp_line = line;
     
     /*Skip leading whitespaces*/
-    while (isspace(*ptr)) {
-        ptr++;
+    while (isspace(*temp_line)) {
+        temp_line++;
     }
 
     /* Check if "macr" is present at the beginning */
-    if (strncmp(ptr, macr, strlen(macr)) != 0) {
+    if (strncmp(temp_line, Macroformat, strlen(Macroformat)) != 0) {
         return 0;
     }
-    ptr += strlen(macr);
+    temp_line += strlen(Macroformat);
 
     /* Skip whitespaces after "macr" */
-    while (isspace(*ptr)) {
-        ptr++;
+    while (isspace(*temp_line)) {
+        temp_line++;
     }
 
     /* Check if macro name is valid */
-    if (!*ptr || !isalpha((unsigned char)*ptr)) {
+    if (!*temp_line || !isalpha((unsigned char)*temp_line)) {
         return 0;
     }
 
     /* Move ptr to the end of the macro name */
-    while (*ptr && (isalnum((unsigned char)*ptr) || *ptr == '_')) {
-        ptr++;
+    while (*temp_line && (isalnum((unsigned char)*temp_line) || *temp_line == '_')) {
+        temp_line++;
     }
 
     /* Ensure no extra non-whitespace characters after the macro name */
-    while (*ptr) {
-        if (!isspace(*ptr)) {
+    while (*temp_line) {
+        if (!isspace(*temp_line)) {
             return 0;
         }
-        ptr++;
+        temp_line++;
     }
 
     return 1;
 }
 
-char *format_operands(char *operand_str) {
-    static char formatted_operands[256];
-    char *src = operand_str;
-    char *dst = formatted_operands;
+char *format_operands(char *input_operands) {
+    static char formated_operands[256];
+    char *input_ptr = input_operands;
+    char *output_ptr = formated_operands;
 
-    while (*src) {
-        if (!isspace(*src) && *src != ',') {
-            *dst++ = *src;
-        } else if (*src == ',') {
+    while (*input_ptr) {
+        if (!isspace(*input_ptr) && *input_ptr != ',') {
+            *output_ptr++ = *input_ptr;
+        } else if (*input_ptr == ',') {
             /* Add comma and skip spaces after it */
-            *dst++ = ',';
-            while (isspace(*(++src))) {}
-            src--;  /* Adjust for the increment in the while loop */
+            *output_ptr++ = ',';
+            while (isspace(*(++input_ptr))) {}
+            input_ptr--;  /* Adjust for the increment in the while loop */
         }
-        src++;
+        input_ptr++;
     }
-    *dst = '\0';  /* Null-terminate the formatted string */
+    *output_ptr = '\0';  /* Null-terminate the cleaned string */
 
-    return formatted_operands;
+    return formated_operands;
 }
+
 
 int get_operand_type(const char *operand) {
     /* Check for immediate addressing */
     if (operand[0] == '#') {
-        return 0;  /* Immediate addressing */
+        if (isdigit(operand[1]) || (operand[1] == '-' && isdigit(operand[2]))) {
+            return 0;  /* Immediate addressing */
+        } else {
+            return -1;  /* Invalid operand type if not followed by a number */
+        }
     }
     /* Check for register direct addressing (r0-r7) */
     else if (operand[0] == 'r' && strlen(operand) == 2 && isdigit(operand[1]) && operand[1] >= '0' && operand[1] <= '7') {
@@ -147,23 +152,37 @@ int get_operand_type(const char *operand) {
 }
 
 
-void analyze_line(char *line, char **label, char **instruction, char **operand, location *amFile, int *errC) {
-    char *line_start;
+
+int analyze_line(char *line, char **label, char **instruction, char **operand, location *amFile, int *errC) {
+    char *line_start = line;
     char *line_end;
     char *colon_position;
-
-    /* Trim leading and trailing whitespace */
-    line_start = line;
-    line_end = line_start + strlen(line_start) - 1;
+    char *comment_start;
 
     /* Skip leading spaces or tabs */
     while (*line_start == ' ' || *line_start == '\t') line_start++;
-    /* Skip trailing spaces, tabs, or newlines */
-    while (line_end > line_start && (*line_end == ' ' || *line_end == '\t' || *line_end == '\n')) line_end--;
+
+    /* Check if the first non-whitespace character is a semicolon */
+    if (*line_start == ';') {
+        return 1;  /* Indicate that this is a comment line */
+    }
+
+    /* Trim trailing whitespace */
+    line_end = line_start + strlen(line_start) - 1;
+    while (line_end > line_start && (*line_end == ' ' || *line_end == '\t' || *line_end == '\n')) {
+        line_end--;
+    }
     *(line_end + 1) = '\0';
 
-    if (*line_start == '\0' || *line_start == ';') {
-        return;  /* Skip empty lines or comments */
+    /* Handle inline comments (anything after a semicolon) */
+    comment_start = strchr(line_start, ';');
+    if (comment_start) {
+        *comment_start = '\0';  /* Null-terminate the line at the semicolon */
+        
+        /* After removing the comment, check if the line is empty */
+        if (*line_start == '\0') {
+            return 1;  /* Indicate that this is a comment line */
+        }
     }
 
     /* Initialize pointers for label, instruction, and operand */
@@ -182,7 +201,7 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
             amFile->colo = *label;
             print_external_error(19, *amFile);  /* Invalid label */
             (*errC)++;
-            return;
+            return -1;
         }
 
         /* Move to the part after the colon and remove leading whitespace */
@@ -207,20 +226,16 @@ void analyze_line(char *line, char **label, char **instruction, char **operand, 
                 line_start++;
             }
             *operand = line_start;  /* Set operand to the rest of the line */
+            
+            /* Format the operands */
+            *operand = format_operands(*operand);  /* Format the operand to remove extra spaces */
         }
 
-        /* Handle special instructions like .entry and .extern */
-        if (strcmp(*instruction, ".entry") == 0 || strcmp(*instruction, ".extern") == 0) {
-            if (*operand == NULL || !is_valid_label(*operand)) {
-                print_external_error(strcmp(*instruction, ".entry") == 0 ? 20 : 21, *amFile);  /* Invalid or missing operand */
-                (*errC)++;
-            }
-        }
+        return 0;  /* Indicate that this is not a comment line */
     }
+
+    return -1;  /* Indicate some kind of error or empty line */
 }
-
-
-
 
 InstructionMap instruction_map[] = {
     {"mov", MOV, 0},
@@ -262,7 +277,6 @@ int get_opcode(const char *instruction) {
 }
 int set_operand_bits(int operandType, int isSource) {
     int value = 0;
-
     switch (operandType) {
         case 0:  /* Immediate */
             value = 1;  /* ביט 0 מייצג Immediate */
@@ -279,7 +293,6 @@ int set_operand_bits(int operandType, int isSource) {
         default:
             return 0;  /* במקרה של שגיאה */
     }
-
     if (isSource) {
         return value << 7;  /* קידוד בביטים 10-7 */
     } else {
@@ -311,38 +324,4 @@ int is_register(int operand_type, const char *operand) {
     }
     return 0;  /* לא רגיסטר חוקי */
 }
-
-
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

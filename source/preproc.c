@@ -46,105 +46,139 @@ NodeOnList *find_macro(LinkedListOfMacro *macroTable, const char *name)
     return NULL;
 }
 
-void process_file(char *as, char *am)
+void process_file(char *source_file, char *output_file_name)
 {
-    int lineC;
-    FILE *inputFile , *outputFile;
-    char in_macro = 0;
-    char line[MAX_LINE_LENGTH];
-    location *amFile = NULL;
-    NodeOnList *currentMacro = NULL;
-    
-    /* Initialize macroTable if not already done */
+    int line_count;
+    FILE *input_file, *output_file;
+    char is_in_macro = 0;
+    char line_buffer[MAX_LINE_LENGTH];
+    location *output_location = NULL;
+    NodeOnList *current_macro_node = NULL;
+    char *macro_name = NULL;
+    char *newline_position = NULL;
+    NodeOnList *found_macro = NULL;
+    char *trimmed_line = NULL;
+    NodeOfMacroContentList *macro_content_node = NULL;
+
+    /* Initialize the macro table if it hasn't been done already */
     if (macroTable == NULL) {
         macroTable = (LinkedListOfMacro *)handle_malloc(sizeof(LinkedListOfMacro));
         macroTable->head = NULL;
         macroTable->tail = NULL;
     }
 
-    lineC = 0;
-    amFile = (location *)handle_malloc(sizeof(location));
-    if (amFile == NULL) {
+    line_count = 0;
+    output_location = (location *)handle_malloc(sizeof(location));
+    if (output_location == NULL) {
         print_internal_error(ERROR_CODE_1);
-        free(amFile);
+        free(output_location);
         return;
     }
 
-    inputFile = fopen(as,"r");
-    outputFile = fopen(am,"wb");
-    amFile->file_name = as;
-    if (!as || !am)
-    {
+    input_file = fopen(source_file, "r");
+    output_file = fopen(output_file_name, "wb");
+    output_location->file_name = source_file;
+    if (input_file == NULL || output_file == NULL){
         print_internal_error(ERROR_CODE_2);
+
+        if (input_file != NULL){
+            fclose(input_file);
+        } 
+        if (output_file != NULL){
+         fclose(output_file);
+        }
+        free(output_location);
         exit(EXIT_FAILURE);
     }
 
-    while (fgets(line, MAX_LINE_LENGTH, inputFile) != NULL){
-        char *identifier = Macro_name(line);
-        lineC++;
-        amFile->line_num = lineC;
 
-        /*--------- CASE 1: End of macro decleration ----------*/
-        if (strstr(line, "endmacr") != NULL)
-        { /*CASE 1: End of macro decleration*/
-            if (in_macro)
-            { /*if inside of macro decleration and arrive "endmacr" line.*/
-                if (!check_endmacr_format(line))
+    while (fgets(line_buffer, MAX_LINE_LENGTH, input_file) != NULL)
+    {
+        macro_name = Macro_name(line_buffer);
+        line_count++;
+        output_location->line_num = line_count;
+
+        /* Remove the newline character at the end of the line */
+        newline_position = strchr(line_buffer, '\n');
+        if (newline_position) {
+            *newline_position = '\0';
+        }
+
+        /*--------- CASE 1: End of macro declaration ----------*/
+        if (strstr(line_buffer, "endmacr") != NULL)
+        {
+            if (is_in_macro)
+            {
+                if (!check_endmacr_format(line_buffer))
                 {
                     print_internal_error(ERROR_CODE_10);
                     print_internal_error(ERROR_CODE_29);
                     return;
                 }
-                in_macro = 0;
-                currentMacro = NULL; /*End of macro, reset currentMacro*/
+                is_in_macro = 0;
+                current_macro_node = NULL;
             }
-            /* --------- Case 2: Inside Macro Declaration ---------- */
         }
-        else if (in_macro)
-        { /*Case 2: Inside Macro Declaration*/
-            if (currentMacro != NULL)
+        else if (is_in_macro)
+        {
+            if (current_macro_node != NULL)
             {
-                add_macro_content(currentMacro, line);
+                add_macro_content(current_macro_node, line_buffer);
             }
         }
         else
         {
-            /* --------- Case 3: Call for macro ------------------- */
-            NodeOnList *calledMacro = find_macro(macroTable, identifier);
-            if (calledMacro)
-            { /*Case 3: Call for macro*/
-                NodeOfMacroContentList *content = calledMacro->Macro_content->head;
-                while (content)
+            found_macro = find_macro(macroTable, macro_name);
+            if (found_macro)
+            {
+                /* Check if the line contains only the identifier */
+                trimmed_line = line_buffer;
+                while (*trimmed_line == ' ' || *trimmed_line == '\t')
+                    trimmed_line++; 
+                if (strcmp(trimmed_line, macro_name) == 0)
                 {
-                    fputs(content->line, outputFile);
-                    content = content->next;
+                    /* Case 3: Call for macro */
+                    macro_content_node = found_macro->Macro_content->head;
+                    while (macro_content_node)
+                    {
+                        fputs(macro_content_node->line, output_file);
+                        fputs("\n", output_file);  /* Ensure each macro line ends with a newline */
+                        macro_content_node = macro_content_node->next;
+                    }
                 }
-                /* --------- CASE 4: Start of macro decleration. ---------- */
+                else
+                {
+                    output_location->colo = macro_name;
+                    print_external_error(9, *output_location);
+                    print_internal_error(ERROR_CODE_39);
+                    return;
+                }
             }
-            else if (strstr(line, "macr") != NULL){ /*CASE 4: Start of macro decleration.*/
-                if (!check_macro_declaration_format(line)) {
+            else if (strstr(line_buffer, "macr") != NULL)
+            {
+                if (!check_macro_declaration_format(line_buffer))
+                {
                     print_internal_error(ERROR_CODE_9);
                     print_internal_error(ERROR_CODE_29);
                     return;
                 }
-                addNode(macroTable, line);
-                in_macro = 1;
-                currentMacro = macroTable->tail; /*Set currentMacro to the newly added node*/
+                addNode(macroTable, line_buffer);
+                is_in_macro = 1;
+                current_macro_node = macroTable->tail;
             }
-            /* --------- Case 5: Noraml line. ----------------------- */
             else
-            { /*Case 5: Noraml line.*/
-                fputs(line, outputFile);
+            {
+                fputs(line_buffer, output_file);
+                fputs("\n", output_file); 
             }
         }
     }
-    /*free_linked_list(macroTable);*/
-    fclose(inputFile);
-    fclose(outputFile);
+
+    fclose(input_file);
+    fclose(output_file);
+    free(output_location);
 }
 
-/*TODO : 1) check if in the end of decleration "endmacr" there is not extra text ( Done).
-       2) create method to replace the text when call for macro.
-       3) check there is no calls for non existent macro.
-       4) check that macro name isnt start..
-       */
+
+
+
